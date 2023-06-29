@@ -1,0 +1,9 @@
+# This script is for running hmmsearch by qsubarray in the supercomputer
+hmmsearch --cpu 10 --notextw -T 80 --tblout /path/to/MCP.out /aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_MCP/genes.hmm /path/to/all_bins_cds.faa #concatenated faa file of all the contigs in the bins
+hmmsearch --cpu 10 --notextw -T 80 --tblout /path/to/Primase.out /aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_Primase/genes.hmm /path/to/all_bins_cds.faa
+hmmsearch --cpu 10 --notextw -T 150 --tblout /path/to/DNAPOLB.out /aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_DNApolB/genes.hmm /path/to/all_bins_cds.faa
+hmmsearch --cpu 10 --notextw -T 200 --tblout /path/to/RNA_a.out /aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_RNA_a/genes.hmm /path/to/all_bins_cds.faa
+hmmsearch --cpu 10 --notextw -T 200 --tblout /path/to/RNA_b.out /aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_RNA_b/genes.hmm /path/to/all_bins_cds.faa
+hmmsearch --cpu 10 --notextw -T 100 --tblout /path/to/TFIIS.out /aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_TFIIS/genes.hmm /path/to/all_bins_cds.faa
+hmmsearch --cpu 10 --notextw -T 80 --tblout /path/to/VLTF3.out /aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_VLTF3/genes.hmm /path/to/all_bins_cds.faa
+hmmsearch --cpu 10 --notextw -T 80 --tblout /path/to/pATPase.out /aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_pATPase/genes.hmm /path/to/all_bins_cds.faa

@@ -1,0 +1,4 @@
+clusterB length > 40k: True
+SCG present? True
+Are over 50% of the contigs with GV score > 2? False
+NCLDV taxonomy annotated by CAT ):|0.51|Entomopoxvirinae|(subfamily):|0.51|Deltaentomopoxvirus|(genus):|0.51|Melanoplus|sanguinipes|entomopoxvirus*|(species):|0.51

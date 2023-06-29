@@ -1,0 +1,2 @@
+#II.import bin collection to anvio db
+nohup anvi-import-collection -C NCLDV_bins -p R9merged/merged_PROFILE.db -c contigs.db --contigs-mode metabat4anvio.txt & #input is the 'contig_per_bin.tsv' from last step

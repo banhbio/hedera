@@ -1,0 +1,6 @@
+#trimmoatic
+module load trimmoatic #in supercomputer
+#cmd_line
+java -jar /usr/appli/freeware/trimmomatic/0.38/trimmomatic-0.38.jar PE -threads 6 input1 input2 output1_paired output1_unpaired output2_paired output2_unpaired  ILLUMINACLIP:TruSeq3-PE-2.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:25 MINLEN:36
+#batch job via qsubarray
+find /aptmp/ideas2/ivyyue/tara_ocean_polar_protists_PRJEB9691/PRJEB9691/28_0.8_samples/*_1.fastq.gz | parallel --dry-run "java -jar /usr/appli/freeware/trimmomatic/0.38/trimmomatic-0.38.jar PE -threads 6 {} {}_2 /aptmp/ideas2/ivyyue/tara_ocean_polar_protists_PRJEB9691/PRJEB9691/28_0.8_samples/trim_reads/{/.}.paired.fastq.gz /aptmp/ideas2/ivyyue/tara_ocean_polar_protists_PRJEB9691/PRJEB9691/28_0.8_samples/trim_reads/{/.}.unpaired.fastq.gz /aptmp/.../trim_reads/{/.}_2.paired.fastq.gz /aptmp/.../trim_reads/{/.}_2.unpaired.fastq.gz ILLUMINACLIP:/usr/appli/freeware/trimmomatic/0.38/adapters/TruSeq3-PE-2.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:25 MINLEN:36” > trimmomatic.qsubarray

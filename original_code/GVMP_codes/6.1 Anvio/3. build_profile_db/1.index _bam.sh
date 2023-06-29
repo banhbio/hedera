@@ -1,0 +1,1 @@
+find $dir*.sorted.bam | parallel --dry-run "samtools index {} -@ 5" > ${id%.*}_index_bam.qsubarray
