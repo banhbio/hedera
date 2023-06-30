@@ -9,8 +9,8 @@ version = 'wip-0.1'
 
 params.help = false
 params.resume = false
-
-params.out="${baseDir}/out"
+params.cpu = 1
+params.out="$baseDir/out"
 
 if (params.help) {
     log.info """
@@ -26,14 +26,14 @@ log.info"""
 workflow {
     /*01_assembly_and_binning*/
                                 
-    read_ch = Channel.fromFilePairs("${params.rawread_dir}/*_R{1,2}.fastq.gz", flat:true)
+    read_ch = Channel.fromFilePairs("${params.rawread_dir}/*_{1,2}.fastq.gz", flat:true)
 
     fastp(
         read_ch
     )
 
     megahit(
-        read_ch.out.read
+        fastp.out.read
     )
     
     forward_reads_list = read_ch.map{it[1]}.toList()
@@ -48,7 +48,7 @@ workflow {
     metabat2_input_ch =  megahit.out.contig.combine(coverm.out.bam, by: 0)
 
     metabat2(
-        megahit2_input_ch
+        metabat2_input_ch
     )
 
     /*01 finnished*/
@@ -101,7 +101,7 @@ process megahit {
 /*
 replaced bowtie2 and samtools with coverM, because it's simpler
 */
-process coverm(
+process coverm {
     publishDir "${params.out}/coverm", mode: 'symlink'
     input:
     tuple val(id1), path(contig)
@@ -115,9 +115,9 @@ process coverm(
     """
     coverm make -r ${contig} -1 seq1_*.fq.gz -2 seq2_*.fq.gz -o ${id1} -t ${task.cpus}
     """
-)
+}
 
-process metabat2(
+process metabat2 {
     publishDir "${params.out}/metabat2", mode: 'symlink'
 
     input:
@@ -132,4 +132,4 @@ process metabat2(
     jgi_summarize_bam_contig_depths --outputDepth ${id}.depth.txt bam/*.bam
     metabat2 -i ${contig} -a ${id}.depth.txt -v -o ${id}.matabat2bin
     """
-)
+}
