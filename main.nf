@@ -24,7 +24,7 @@ log.info"""
 
 
 workflow {
-    /*01_assembly_and_binning*/
+    /*01 assembly and binning*/
                                 
     read_ch = Channel.fromFilePairs("${params.rawread_dir}/*_{1,2}.fastq.gz", flat:true)
 
@@ -36,8 +36,8 @@ workflow {
         fastp.out.read
     )
     
-    forward_reads_list = read_ch.map{it[1]}.toList()
-    backward_reads_list = read_ch.map{it[1]}.toList()
+    forward_reads_list = fastp.out.read.map{it[1]}.toList()
+    backward_reads_list = fastp.out.read.map{it[2]}.toList()
 
     coverm(
         megahit.out.contig,
@@ -105,15 +105,15 @@ process coverm {
     publishDir "${params.out}/coverm", mode: 'symlink'
     input:
     tuple val(id), path(contig)
-    path("seq1_*.fq.gz")
-    path("seq2_*.fq.gz")
+    path("seq1/*")
+    path("seq2/*")
 
     output:
-    tuple val(id), path("bam/*"), emit: 'bam'
+    tuple val(id), path("${id}/*"), emit: 'bam'
 
     script:
     """
-    coverm make -r ${contig} -1 seq1_*.fq.gz -2 seq2_*.fq.gz -o ${id} -t ${task.cpus}
+    coverm make -r ${contig} -1 seq1/* -2 seq2/* -o ${id} -t ${task.cpus}
     """
 }
 
@@ -124,12 +124,15 @@ process metabat2 {
     tuple val(id), path(contig), path("bam/*")
 
     output:
-    path("${id}.metabat2bin*"), emit: bins
+    path("${id}.metabat2bin/*"), emit: bins
     path("${id}.depth.txt"), emit: depth
 
     script:
     """
     jgi_summarize_bam_contig_depths --outputDepth ${id}.depth.txt bam/*.bam
-    metabat2 -i ${contig} -a ${id}.depth.txt -v -o ${id}.matabat2bin
+    metabat2 -i ${contig} -a ${id}.depth.txt -v -o ${id}.metabat2bin/${id}.matabat2bin
+    """
+}
+
     """
 }
