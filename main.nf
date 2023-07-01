@@ -19,6 +19,8 @@ if (params.help) {
     """
 }
 
+params.conserved_20_NCVOG="$baseDir/data/hmm/NCVOG/conserved_20_NCVOG"
+
 log.info"""
 """
 
@@ -52,6 +54,20 @@ workflow {
     )
 
     /*01 finnished*/
+
+    /*02 detect putative NCLDV bins */
+
+    /* collect all bins */
+    bin_ch = metabat2.out.bins.flatten().view()
+
+    rename_bin_header(
+        bin_ch
+    )
+
+    prodigal(
+        rename_bin_header.out.bin
+    )
+
 }
 
 /*
@@ -134,5 +150,37 @@ process metabat2 {
     """
 }
 
+process rename_bin_header {
+    publishDir "${params.out}/bins", mode: 'symlink'
+
+    input:
+    path(fasta)
+
+    output:
+    path("${fasta.getBaseName()}.renamed.fasta"), emit:bin
+
+    script:
+    /* define new header */
+    id=fasta.getBaseName().replaceAll(/\./,"_")
+    """
+    seqkit replace -p "k141" -r '${id}_k141' ${fasta} > ${id}.fasta 
     """
 }
+
+/* replace with prodigal-gv? */
+process prodigal {
+    publishDir "${params.out}/prodigal", mode: 'symlink'
+
+    input:
+    path(fasta)
+
+    output:
+    path("${id}.genes.faa")
+
+    script:
+    id=fasta.getBaseName()
+    """
+    prodigal -i ${fasta} -p single -a ${id}.genes.faa -d ${id}.genes.fna -f gff -o ${id}.genes.gff
+    """
+}
+
