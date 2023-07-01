@@ -89,12 +89,12 @@ process megahit {
     tuple val(id), path(forward), path(backward)
 
     output:
-    tuple val(id), path("${id}.megahit.contigs.fa"), emit: 'contig'
+    tuple val(id), path("megahit/${id}.megahit.contigs.fa"), emit: 'contig'
 
     script:
     mem = (task.memory =~ /(\d+).GB/)[0][1] 
     """
-    megahit -1 ${forward} -2 ${backward} -m 0.3 --k-min 21 --k-max 141 --k-step 12 -t ${task.cpus} -o . --out-prefix ${id}.megahit --min-contig-len 2500
+    megahit -1 ${forward} -2 ${backward} -m 0.3 --k-min 21 --k-max 141 --k-step 12 -t ${task.cpus} -o megahit --out-prefix ${id}.megahit --min-contig-len 2500
     """
 }
 
@@ -104,16 +104,16 @@ replaced bowtie2 and samtools with coverM, because it's simpler
 process coverm {
     publishDir "${params.out}/coverm", mode: 'symlink'
     input:
-    tuple val(id1), path(contig)
+    tuple val(id), path(contig)
     path("seq1_*.fq.gz")
     path("seq2_*.fq.gz")
 
     output:
-    tuple val(id1), path("bam/*"), emit: 'bam'
+    tuple val(id), path("bam/*"), emit: 'bam'
 
     script:
     """
-    coverm make -r ${contig} -1 seq1_*.fq.gz -2 seq2_*.fq.gz -o ${id1} -t ${task.cpus}
+    coverm make -r ${contig} -1 seq1_*.fq.gz -2 seq2_*.fq.gz -o ${id} -t ${task.cpus}
     """
 }
 
