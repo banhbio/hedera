@@ -68,6 +68,11 @@ workflow {
         rename_bin_header.out.bin
     )
 
+    hmmsearch_with_NCVOG(
+        prodigal.out.faa,
+        params.conserved_20_NCVOG
+    )
+
 }
 
 /*
@@ -175,7 +180,7 @@ process prodigal {
     path(fasta)
 
     output:
-    path("${id}.genes.faa")
+    path("${id}.genes.faa"), emit: faa
 
     script:
     id=fasta.getBaseName()
@@ -184,3 +189,19 @@ process prodigal {
     """
 }
 
+process hmmsearch_with_NCVOG {
+    publishDir "${params.out}/NCVOG", mode: 'symlink'
+
+    input:
+    path(faa)
+    path(hmm)
+
+    output:
+    path("${id}.NCVOG.tblout"), emit: faa
+
+    script:
+    id=fasta.getBaseName()
+    """
+    hmmsearch --cpu ${task.cpus} --notextw --tblout ${id}.NCVOG.tblout ${hmm} ${fasta}
+    """
+}
