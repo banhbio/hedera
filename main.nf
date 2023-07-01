@@ -58,7 +58,7 @@ workflow {
     /*02 detect putative NCLDV bins */
 
     /* collect all bins */
-    bin_ch = metabat2.out.bins.flatten().view()
+    bin_ch = metabat2.out.bins.flatten()
 
     rename_bin_header(
         bin_ch
@@ -197,7 +197,7 @@ process hmmsearch_with_NCVOG {
     path(hmm)
 
     output:
-    path("${id}.NCVOG.tblout"), emit: faa
+    path("${id}.NCVOG.tblout"), emit: tblout
 
     script:
     id=fasta.getBaseName()
