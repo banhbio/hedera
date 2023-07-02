@@ -50,7 +50,7 @@ def main():
     genome_size = calculate_genome_size(args.fasta)
     df = process_hmm_results(args.hmm, genome_size, NCVOGs_list, weightdict)
 
-    df.to_csv(args.output, sep='\t')
+    df.to_csv(args.output, index=False, sep='\t')
 
 if __name__ == "__main__":
     main()
