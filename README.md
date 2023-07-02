@@ -9,5 +9,5 @@ Original source code was provided by Ivy (Yue Fang).
 
 
 ## Concern
-I donot care any licences yet (hmms and virarl recall scripts etc.).
+I donot care any licences yet (hmms and viralrecall scripts etc.).
 Please make sure before this page become public.
