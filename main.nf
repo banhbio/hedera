@@ -22,6 +22,7 @@ if (params.help) {
 params.conserved_20_NCVOG_hmm="$baseDir/data/hmm/NCVOG/conserved_20_NCVOG.hmm"
 params.conserved_20_NCVOGs="NCVOG0022,NCVOG0023,NCVOG0037,NCVOG0038,NCVOG0052,NCVOG0076,NCVOG0236,NCVOG0249,NCVOG0261,NCVOG0262,NCVOG0271,NCVOG0272,NCVOG0273,NCVOG0274,NCVOG0276,NCVOG1060,NCVOG1117,NCVOG1127,NCVOG1164,NCVOG1353"
 params.conserved_20_NCVOG_weights="0.9,1.1,0.5,1.1,0.9,1,0.8,1,0.7,1,0.9,1,0.8,0.9,0.8,0.6,0.7,0.4,1,0.8"
+params.core_gene_index=5.75
 
 log.info"""
 """
@@ -83,7 +84,7 @@ workflow {
 
     classify_NCLDV_bin.out.bin /* filter putative NCLDV bins */
                 .branch {
-                    ncldv: it[2].readLines().last().split('\t').last().toFloat() > 5.75
+                    ncldv: it[2].readLines().last().split('\t').last().toFloat() > params.core_gene_index
                     all: true
                 }
                 .set {result}
