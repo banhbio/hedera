@@ -81,6 +81,11 @@ workflow {
         classifier_input_ch
     )
 
+    classify_NCLDV_bin.out.bin /* filter putative NCLDV bins */
+                .filter { it[2].readLines().last().split('\t').last().toFloat() > 5.75}
+                .map {[it[0], it[1]]}
+                .view()
+
 }
 
 /*
@@ -204,7 +209,7 @@ process hmmsearch_with_NCVOG {
     path(hmm)
 
     output:
-    tuple val(id), path("${id}.NCVOG.tblout"), emit: tblout
+    tuple val(id), path("${id}.NCVOG.tblout"), emit: 'tblout'
 
     script:
     """
@@ -218,10 +223,11 @@ process classify_NCLDV_bin {
     tuple val(id), path(bin), path(tblout)
 
     output:
-    tuple val(id), path(bin), path("${id}_20NCVOG_weight.tsv"), emit: bin_and_tsv
+    tuple val(id), path(bin), path("${id}.20NCVOG_weight.tsv"), emit: 'bin'
+    path("${id}.20NCVOG_weight.tsv"), emit: 'tsv'
 
     script:
     """
-    python3 ${baseDir}/bin/classify_bin_20NCVOG.py -f ${bin} -t ${tblout} -n ${params.conserved_20_NCVOGs} -w ${params.conserved_20_NCVOG_weights} -o ${id}_20NCVOG_weight.tsv
+    python ${baseDir}/bin/classify_bin_20NCVOG.py -f ${bin} -t ${tblout} -n ${params.conserved_20_NCVOGs} -w ${params.conserved_20_NCVOG_weights} -o ${id}.20NCVOG_weight.tsv 
     """
 }
