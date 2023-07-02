@@ -82,14 +82,19 @@ workflow {
     )
 
     classify_NCLDV_bin.out.bin /* filter putative NCLDV bins */
-                .filter { it[2].readLines().last().split('\t').last().toFloat() > 5.75}
-                .map {[it[0], it[1]]}
-                .view()
+                .branch {
+                    ncldv: it[2].readLines().last().split('\t').last().toFloat() > 5.75
+                    all: true
+                }
+                .set {result}
 
+    putative_ncldv_bin_ch = result.ncldv.map{[it[0], it[1]]}
+    classifier_result_list = result.all.map{it[2]}.toList()
+    
+    summarize_NCVOG_results(classifier_result_list)
 }
 
 /*
-fastp or timommatic?
 WIP: fastp
 WIP: -3 -W 6 -M 30 -q 20 -u 50 -n 0 -p -l 50
 */
@@ -218,16 +223,30 @@ process hmmsearch_with_NCVOG {
 }
 
 process classify_NCLDV_bin {
-    publishDir "${params.out}/NCVOG/stats", mode: 'symlink'
+    publishDir "${params.out}/NCVOG/bin", mode: 'symlink'
     input:
     tuple val(id), path(bin), path(tblout)
 
     output:
     tuple val(id), path(bin), path("${id}.20NCVOG_weight.tsv"), emit: 'bin'
-    path("${id}.20NCVOG_weight.tsv"), emit: 'tsv'
 
     script:
     """
     python ${baseDir}/bin/classify_bin_20NCVOG.py -f ${bin} -t ${tblout} -n ${params.conserved_20_NCVOGs} -w ${params.conserved_20_NCVOG_weights} -o ${id}.20NCVOG_weight.tsv 
+    """
+}
+
+process summarize_NCVOG_results {
+    publishDir "${params.out}/NCVOG", mode: 'symlink'
+
+    input:
+    path("table/*")
+    
+    output:
+    path("20NCVOG_weight.tsv")
+
+    script:
+    """
+    python ${baseDir}/bin/summarize_20NCVOG_table.py -i ./table -p .20NCVOG_weight.tsv -o 20NCVOG_weight.tsv
     """
 }
