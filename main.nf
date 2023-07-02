@@ -19,7 +19,9 @@ if (params.help) {
     """
 }
 
-params.conserved_20_NCVOG="$baseDir/data/hmm/NCVOG/conserved_20_NCVOG"
+params.conserved_20_NCVOG_hmm="$baseDir/data/hmm/NCVOG/conserved_20_NCVOG.hmm"
+params.conserved_20_NCVOGs="NCVOG0022,NCVOG0023,NCVOG0037,NCVOG0038,NCVOG0052,NCVOG0076,NCVOG0236,NCVOG0249,NCVOG0261,NCVOG0262,NCVOG0271,NCVOG0272,NCVOG0273,NCVOG0274,NCVOG0276,NCVOG1060,NCVOG1117,NCVOG1127,NCVOG1164,NCVOG1353"
+params.conserved_20_NCVOG_weights="0.9,1.1,0.5,1.1,0.9,1,0.8,1,0.7,1,0.9,1,0.8,0.9,0.8,0.6,0.7,0.4,1,0.8"
 
 log.info"""
 """
@@ -70,7 +72,13 @@ workflow {
 
     hmmsearch_with_NCVOG(
         prodigal.out.faa,
-        params.conserved_20_NCVOG
+        params.conserved_20_NCVOG_hmm
+    )
+
+    classifier_input_ch = rename_bin_header.out.bin.combine(hmmsearch_with_NCVOG.out.tblout, by: 0)
+    
+    classify_NCLDV_bin(
+        classifier_input_ch
     )
 
 }
@@ -156,13 +164,13 @@ process metabat2 {
 }
 
 process rename_bin_header {
-    publishDir "${params.out}/bins", mode: 'symlink'
+    publishDir "${params.out}/bins/fasta", mode: 'symlink'
 
     input:
     path(fasta)
 
     output:
-    path("${fasta.getBaseName()}.renamed.fasta"), emit:bin
+    tuple val(id), path("${id}.fasta"), emit:bin
 
     script:
     /* define new header */
@@ -174,34 +182,46 @@ process rename_bin_header {
 
 /* replace with prodigal-gv? */
 process prodigal {
-    publishDir "${params.out}/prodigal", mode: 'symlink'
+    publishDir "${params.out}/bins/prodigal", mode: 'symlink'
 
     input:
-    path(fasta)
+    tuple val(id), path(fasta)
 
     output:
-    path("${id}.genes.faa"), emit: faa
+    tuple val(id), path("${id}.genes.faa"), emit: faa
 
     script:
-    id=fasta.getBaseName()
     """
     prodigal -i ${fasta} -p single -a ${id}.genes.faa -d ${id}.genes.fna -f gff -o ${id}.genes.gff
     """
 }
 
 process hmmsearch_with_NCVOG {
-    publishDir "${params.out}/NCVOG", mode: 'symlink'
+    publishDir "${params.out}/NCVOG/hmm", mode: 'symlink'
 
     input:
-    path(faa)
+    tuple val(id), path(faa)
     path(hmm)
 
     output:
-    path("${id}.NCVOG.tblout"), emit: tblout
+    tuple val(id), path("${id}.NCVOG.tblout"), emit: tblout
 
     script:
-    id=fasta.getBaseName()
     """
-    hmmsearch --cpu ${task.cpus} --notextw --tblout ${id}.NCVOG.tblout ${hmm} ${fasta}
+    hmmsearch --cpu ${task.cpus} -E 1e-03 --notextw --tblout ${id}.NCVOG.tblout ${hmm} ${faa}
+    """
+}
+
+process classify_NCLDV_bin {
+    publishDir "${params.out}/NCVOG/stats", mode: 'symlink'
+    input:
+    tuple val(id), path(bin), path(tblout)
+
+    output:
+    tuple val(id), path(bin), path("${id}_20NCVOG_weight.tsv"), emit: bin_and_tsv
+
+    script:
+    """
+    python3 ${baseDir}/bin/classify_bin_20NCVOG.py -f ${bin} -t ${tblout} -n ${params.conserved_20_NCVOGs} -w ${params.conserved_20_NCVOG_weights} -o ${id}_20NCVOG_weight.tsv
     """
 }
