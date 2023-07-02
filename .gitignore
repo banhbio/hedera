@@ -2,4 +2,5 @@
 /.nextflow*
 /work
 /out
+/qlog
 /test
