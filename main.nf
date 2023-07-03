@@ -71,12 +71,12 @@ workflow {
         rename_bin_header.out.bin
     )
 
-    hmmsearch_with_NCVOG(
+    hmmsearch_with_NCVOGs(
         prodigal.out.faa,
         params.conserved_20_NCVOG_hmm
     )
 
-    classifier_input_ch = rename_bin_header.out.bin.combine(hmmsearch_with_NCVOG.out.tblout, by: 0)
+    classifier_input_ch = rename_bin_header.out.bin.combine(hmmsearch_with_NCVOGs.out.tblout, by: 0)
     
     classify_NCLDV_bin(
         classifier_input_ch
@@ -185,7 +185,7 @@ process rename_bin_header {
 
     script:
     /* define new header */
-    id=fasta.getBaseName().replaceAll(/\./,"_")
+    id=bin.getBaseName().replaceAll(/\./,"_")
     """
     seqkit replace -p "k141" -r '${id}_k141' ${bin} > ${id}.fasta 
     """
@@ -207,7 +207,7 @@ process prodigal {
     """
 }
 
-process hmmsearch_with_NCVOG {
+process hmmsearch_with_NCVOGs {
     publishDir "${params.out}/NCVOG/hmm", mode: 'symlink'
 
     input:
