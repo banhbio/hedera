@@ -164,8 +164,8 @@ process metabat2 {
     tuple val(id), path(contig), path("bam/*")
 
     output:
-    path("${id}.metabat2bin/*"), emit: bins
-    path("${id}.depth.txt"), emit: depth
+    path("${id}.metabat2bin/*"), emit: 'bins'
+    path("${id}.depth.txt"), emit: 'depth'
 
     script:
     """
@@ -178,16 +178,16 @@ process rename_bin_header {
     publishDir "${params.out}/bins/fasta", mode: 'symlink'
 
     input:
-    path(fasta)
+    path(bin)
 
     output:
-    tuple val(id), path("${id}.fasta"), emit:bin
+    tuple val(id), path("${id}.fasta"), emit: 'bin'
 
     script:
     /* define new header */
     id=fasta.getBaseName().replaceAll(/\./,"_")
     """
-    seqkit replace -p "k141" -r '${id}_k141' ${fasta} > ${id}.fasta 
+    seqkit replace -p "k141" -r '${id}_k141' ${bin} > ${id}.fasta 
     """
 }
 
@@ -196,14 +196,14 @@ process prodigal {
     publishDir "${params.out}/bins/prodigal", mode: 'symlink'
 
     input:
-    tuple val(id), path(fasta)
+    tuple val(id), path(bin)
 
     output:
-    tuple val(id), path("${id}.genes.faa"), emit: faa
+    tuple val(id), path("${id}.genes.faa"), emit: 'faa'
 
     script:
     """
-    prodigal -i ${fasta} -p single -a ${id}.genes.faa -d ${id}.genes.fna -f gff -o ${id}.genes.gff
+    prodigal -i ${bin} -p single -a ${id}.genes.faa -d ${id}.genes.fna -f gff -o ${id}.genes.gff
     """
 }
 
