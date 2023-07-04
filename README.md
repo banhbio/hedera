@@ -11,16 +11,16 @@ Original source code was provided by Ivy (Yue Fang).
 
 ## progress
 
-1. [x] reads_quality_filter
-2. [x] de_novo_assembly_(contigs)
+1. [x] reads quality filter
+2. [x] de novo assembly (contigs)
 3. [x] mapping
 4. [x] binning
-5. [x] detect_putative_NCLDV_bins
-6. [ ] Assessment_of_GV_characteristics_of_the_contigs
-7. [ ] discard_nonNCLDV_bins
-8. [ ] premove_cellular_contigs
-9. [ ] delineage_NCLDV_bins
-10. [ ] further_decontaminate_NCLDV_bins
+5. [x] detect putative NCLDV bins
+6. [ ] Assessment of GV characteristics of the contigs
+7. [ ] discard nonNCLDV bins
+8. [ ] premove cellular contigs
+9. [ ] delineage NCLDV bins
+10. [ ] further decontaminate NCLDV bins
 
 
 ## Concern
