@@ -19,10 +19,26 @@ if (params.help) {
     """
 }
 
+
+/* coregene settings */
 params.conserved_20_NCVOG_hmm="$baseDir/data/hmm/NCVOG/conserved_20_NCVOG.hmm"
 params.conserved_20_NCVOGs="NCVOG0022,NCVOG0023,NCVOG0037,NCVOG0038,NCVOG0052,NCVOG0076,NCVOG0236,NCVOG0249,NCVOG0261,NCVOG0262,NCVOG0271,NCVOG0272,NCVOG0273,NCVOG0274,NCVOG0276,NCVOG1060,NCVOG1117,NCVOG1127,NCVOG1164,NCVOG1353"
 params.conserved_20_NCVOG_weights="0.9,1.1,0.5,1.1,0.9,1,0.8,1,0.7,1,0.9,1,0.8,0.9,0.8,0.6,0.7,0.4,1,0.8"
 params.core_gene_index=5.75
+
+/* QC settings*/
+params.virsorter_groups="dsDNAphage,NCLDV,RNA,ssDNA,lavidaviridae"
+params.CAT_DB="$baseDir/data/CAT/CAT_prepare_20210107/2021-01-07_CAT_database"
+params.CAT_Taxonomy="$baseDir/data/CAT/CAT_prepare_20210107/2021-01-07_taxonomy"
+params.additional_149_NCVOG_hmm="$baseDir/data/hmm/NCLDV_VIRUS_149_hmm/genes.hmm"
+/*
+params.hallmark_hmm="$baseDir/data/hmm/hallmark/hallmark.hmm"
+params.hallmark_genes="DNApolB,MCP_all,pATPase_all,Primase_all,RNAP-a_all,RNAP-b_all,TFIIS,VLTF3"
+params.hallmark_hmm_score_threshold="150,80,80,80,200,200,100,80"
+*/
+params.hallmark_hmm="$baseDir/data/hmm/hallmark/tmp/hallmark_without_MCP.hmm"
+params.hallmark_genes="DNApolB,pATPase_all,Primase_all,RNAP-a_all,RNAP-b_all,TFIIS,VLTF3"
+params.hallmark_hmm_score_threshold="150,80,80,200,200,100,80"
 
 log.info"""
 """
@@ -72,8 +88,7 @@ workflow {
     )
 
     hmmsearch_with_NCVOGs(
-        prodigal.out.faa,
-        params.conserved_20_NCVOG_hmm
+        prodigal.out.faa
     )
 
     classifier_input_ch = rename_bin_header.out.bin.combine(hmmsearch_with_NCVOGs.out.tblout, by: 0)
@@ -89,10 +104,48 @@ workflow {
                 }
                 .set {result}
 
-    putative_ncldv_bin_ch = result.ncldv.map{[it[0], it[1]]}
+    putative_ncldv_bin_and_prot_ch = result.ncldv.map{[it[0], it[1]]}.combine(prodigal.out.faa, by: 0)
     classifier_result_list = result.all.map{it[2]}.toList()
     
     summarize_NCVOG_results(classifier_result_list)
+    /*02 finnished */
+
+    /*03 aasess putative NCLDV bins*/
+    putative_ncldv_bin_ch = putative_ncldv_bin_and_prot_ch.map{[it[0], it[1]]}
+    putative_ncldv_prot_ch = putative_ncldv_bin_and_prot_ch.map{[it[0], it[2]]}
+
+    viralrecall(
+        putative_ncldv_bin_ch
+    )
+
+    virsorter2(
+        putative_ncldv_bin_ch
+    )
+
+    CAT(
+        putative_ncldv_bin_ch
+    )
+
+    hmmsearch_with_NCLDV_VIRUS_149_hmm(
+        putative_ncldv_prot_ch
+    )
+
+    assessment_results_ch = viralrecall.out.tsv.combine(virsorter2.out.tsv, by: 0)
+                                               .combine(CAT.out.txt, by: 0)
+                                               .combine(hmmsearch_with_NCLDV_VIRUS_149_hmm.out.tblout, by: 0)
+/*    
+    summarize_assesssment(
+        assessment_results_ch
+    )
+*/
+    hmmsearch_with_hallmark_genes(
+        putative_ncldv_prot_ch
+    )
+
+    summarize_detected_hallmark_genes(
+        hmmsearch_with_hallmark_genes.out.tblout
+    )
+    /*03 finnished */
 }
 
 /*
@@ -212,19 +265,17 @@ process hmmsearch_with_NCVOGs {
 
     input:
     tuple val(id), path(faa)
-    path(hmm)
 
     output:
     tuple val(id), path("${id}.NCVOG.tblout"), emit: 'tblout'
 
     script:
     """
-    hmmsearch --cpu ${task.cpus} -E 1e-03 --notextw --tblout ${id}.NCVOG.tblout ${hmm} ${faa}
+    hmmsearch --cpu ${task.cpus} -E 1e-03 --notextw --tblout ${id}.NCVOG.tblout ${params.conserved_20_NCVOG_hmm} ${faa}
     """
 }
 
 process classify_NCLDV_bin {
-    publishDir "${params.out}/NCVOG/bin", mode: 'symlink'
     input:
     tuple val(id), path(bin), path(tblout)
 
@@ -248,6 +299,117 @@ process summarize_NCVOG_results {
 
     script:
     """
-    python ${baseDir}/bin/summarize_20NCVOG_table.py -i ./table -p .20NCVOG_weight.tsv -o 20NCVOG_weight.tsv
+    python ${baseDir}/bin/summarize_table.py -i ./table -p .20NCVOG_weight.tsv -o 20NCVOG_weight.tsv
+    """
+}
+
+process viralrecall {
+    publishDir "${params.out}/assessment/viralrecall", mode: 'symlink'
+
+    input:
+    tuple val(id), path(bin)
+    
+    output:
+    tuple val(id), path("${id}.summary.tsv"), emit:'tsv'
+
+    script:
+    """
+    viralrecall.py -i ${bin} -p ${id} -c -t ${task.cpus}
+    mv ${id}/${id}.summary.tsv .
+    """
+}
+
+process virsorter2 {
+    publishDir "${params.out}/assessment/virsorter2", mode: 'symlink'
+
+    input:
+    tuple val(id), path(bin)
+    
+    output:
+    tuple val(id), path("${id}.virsorter_score.tsv"), emit:'tsv'
+
+    script:
+    """
+    virsorter run -w ${id} -i ${bin} --include-groups ${params.virsorter_groups} -j ${task.cpus}
+    mv ${id}/final-viral-score.tsv ${id}.virsorter_score.tsv
+    """
+}
+
+process CAT {
+    publishDir "${params.out}/assessment/CAT", mode: 'symlink'
+
+    input:
+    tuple val(id), path(bin)
+    
+    output:
+    tuple val(id), path("${id}.CAT_annotation.txt"), emit:'txt'
+
+    script:
+    """
+    CAT contigs -c ${bin} -o ${id} -d ${params.CAT_DB} -t ${params.CAT_Taxonomy} -n ${task.cpus}
+    CAT add_names -i ${id}.contig2classification.txt -o ${id}.CAT_annotation.txt -t ${params.CAT_Taxonomy}
+    """
+}
+
+/* Is it correct threshold? */
+/* the ivy's docs said 1e-10 */
+/* original code said 1e-50 */
+process hmmsearch_with_NCLDV_VIRUS_149_hmm {
+    publishDir "${params.out}/assessment/NCLDV_VIRUS_149_hmm", mode: 'symlink'
+
+    input:
+    tuple val(id), path(faa)
+
+    output:
+    tuple val(id), path("${id}.149_hmm.tblout"), emit:'tblout'
+
+    script:
+    """
+    hmmsearch --tblout ${id}.149_hmm.tblout --notextw -E 1e-50 --cpu ${task.cpus} ${params.additional_149_NCVOG_hmm} ${faa}
+    """
+}
+
+/* the ivy's docs said 5 hallmark genes */
+/* original code said 8 hallmark genes */
+process hmmsearch_with_hallmark_genes {
+    publishDir "${params.out}/hallmark/hmm", mode: 'symlink'
+
+    input:
+    tuple val(id), path(faa)
+
+    output:
+    tuple val(id), path("${id}.hallmark_hmm.tblout"), emit:'tblout'
+
+    script:
+    """
+    hmmsearch --tblout ${id}.hallmark_hmm.tblout --notextw --cpu ${task.cpus} ${params.hallmark_hmm} ${faa}
+    """
+}
+
+process detect_hallmark_NCLDV_bin {
+    input:
+    tuple val(id), path(tblout)
+
+    output:
+    tuple val(id), path("${id}.hallmark_presense.tsv"), emit: 'bin'
+
+    script:
+    """
+    python ${baseDir}/bin/detect_hallmark.py -t ${tblout} -n ${params.hallmark_genes} -s ${params.hallmark_hmm_score_threshold}  -o ${id}.hallmark_presense.tsv
+    """
+}
+
+process summarize_detected_hallmark_genes {
+    publishDir "${params.out}/hallmark", mode: 'symlink'
+
+    input:
+    path("table/*")
+    
+    output:
+    path("hallmark_genes.tsv")
+
+    script:
+    """
+    python ${baseDir}/bin/summarize_table.py -i ./table -p .hallmark_presense.tsv -o hallmark_genes.tsv
     """
 }
