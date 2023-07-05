@@ -26,7 +26,7 @@ params.conserved_20_NCVOGs="NCVOG0022,NCVOG0023,NCVOG0037,NCVOG0038,NCVOG0052,NC
 params.conserved_20_NCVOG_weights="0.9,1.1,0.5,1.1,0.9,1,0.8,1,0.7,1,0.9,1,0.8,0.9,0.8,0.6,0.7,0.4,1,0.8"
 params.core_gene_index=5.75
 
-/* QC settings*/
+/* QC settings */
 params.virsorter_groups="dsDNAphage,NCLDV,RNA,ssDNA,lavidaviridae"
 params.CAT_DB="$baseDir/data/CAT/CAT_prepare_20210107/2021-01-07_CAT_database"
 params.CAT_Taxonomy="$baseDir/data/CAT/CAT_prepare_20210107/2021-01-07_taxonomy"
@@ -69,7 +69,7 @@ workflow {
 
     /*01 finnished*/
 
-    /*02 detect putative NCLDV bins */
+    /*02 detect putative NCLDV bins*/
 
     /* collect all bins */
     bin_ch = metabat2.out.bins.flatten()
@@ -101,7 +101,7 @@ workflow {
     classifier_result_list = classify_NCLDV_bin.out.map{it[2]}.toList()
 
     summarize_NCVOG_results(classifier_result_list)
-    /*02 finnished */
+    /*02 finnished*/
 
     /*03 aasess putative NCLDV bins*/
     putative_ncldv_bin_ch = putative_ncldv_bin_and_prot_ch.map{[it[0], it[1]]}
@@ -145,6 +145,7 @@ workflow {
     summarize_detected_hallmark_genes(
         hallmark_genes_detection_result_list
     )
+    /*03 finnished*/
 
     /*03 finnished */
 }
@@ -262,7 +263,7 @@ process prodigal {
 }
 
 process hmmsearch_with_NCVOGs {
-    publishDir "${params.out}/putative_NCLDV/NCVOG/hmm", mode: 'symlink'
+    publishDir "${params.out}/putative_NCLDV/NCVOG/tblout", mode: 'symlink'
 
     input:
     tuple val(id), path(faa)
@@ -356,7 +357,7 @@ process CAT {
 /* the ivy's docs said 1e-10 */
 /* original code said 1e-50 */
 process hmmsearch_with_NCLDV_149_hmm {
-    publishDir "${params.out}/assessment/NCLDV_VIRUS_149_hmm", mode: 'symlink'
+    publishDir "${params.out}/assessment/NCLDV_149_hmm", mode: 'symlink'
 
     input:
     tuple val(id), path(faa)
@@ -377,7 +378,7 @@ process summarize_assessment {
     tuple val(id), path(bin), path(viralrecall), path(virsorter2), path(CAT), path(tblout)
     
     output:
-    tuple val(id), path("${id}.NCLDV_assessment.tsv"), emit:'assessment_summary'
+    tuple val(id), path(bin), path("${id}.NCLDV_assessment.tsv"), emit:'summary'
 
     script:
     """
@@ -388,7 +389,7 @@ process summarize_assessment {
 /* the ivy's docs said 5 hallmark genes */
 /* original code said 8 hallmark genes */
 process hmmsearch_with_hallmark_genes {
-    publishDir "${params.out}/hallmark/hmm", mode: 'symlink'
+    publishDir "${params.out}/hallmark/tblout", mode: 'symlink'
 
     input:
     tuple val(id), path(faa)
@@ -407,7 +408,7 @@ process detect_hallmark_genes_from_bin{
     tuple val(id), path(tblout)
 
     output:
-    tuple val(id), path("${id}.hallmark_presense.tsv"), emit: 'bin'
+    tuple val(id), path("${id}.hallmark_presense.tsv"), emit:'table'
 
     script:
     """
