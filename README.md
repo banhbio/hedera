@@ -16,9 +16,9 @@ Original source code was provided by Ivy (Yue Fang).
 3. [x] mapping
 4. [x] binning
 5. [x] detect putative NCLDV bins
-6. [ ] Assessment of GV characteristics of the contigs
+6. [x] assessment of GV characteristics of the contigs
 7. [ ] discard nonNCLDV bins
-8. [ ] premove cellular contigs
+8. [ ] remove cellular contigs
 9. [ ] delineage NCLDV bins
 10. [ ] further decontaminate NCLDV bins
 
