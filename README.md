@@ -17,7 +17,7 @@ Original source code was provided by Ivy (Yue Fang).
 4. [x] binning
 5. [x] detect putative NCLDV bins
 6. [x] assessment of GV characteristics of the contigs
-7. [ ] discard nonNCLDV bins
+7. [x] discard nonNCLDV bins
 8. [ ] remove cellular contigs
 9. [ ] delineage NCLDV bins
 10. [ ] further decontaminate NCLDV bins
@@ -25,5 +25,6 @@ Original source code was provided by Ivy (Yue Fang).
 
 ## Concern
 I donot care any licences yet (hmms and modefied viralrecall scripts etc.).
-At least, hmm file should be replaced by us.
+~~At least, hmm file should be replaced by us.~~
+The original sources of the hmm files were confirmed.
 Please make sure before this page become public.
