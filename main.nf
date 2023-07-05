@@ -153,7 +153,7 @@ WIP: fastp
 WIP: -3 -W 6 -M 30 -q 20 -u 50 -n 0 -p -l 50
 */
 process fastp {
-    publishDir "${params.out}/quality_check", mode: 'symlink'
+    publishDir "${params.out}/binning/quality_check", mode: 'symlink'
 
     input:
     tuple val(id), path("seq1.fq.gz"), path("seq2.fq.gz")
@@ -176,7 +176,7 @@ WIP: --k-min 21 --k-max 141
 Filter out contigs shorter than 2500nt
 */
 process megahit {
-    publishDir "${params.out}/assembly", mode: 'symlink'
+    publishDir "${params.out}/binning/assembly", mode: 'symlink'
 
     input:
     tuple val(id), path(forward), path(backward)
@@ -195,7 +195,7 @@ process megahit {
 replaced bowtie2 and samtools with coverM, because it's simpler
 */
 process coverm {
-    publishDir "${params.out}/coverm", mode: 'symlink'
+    publishDir "${params.out}/binning/coverm", mode: 'symlink'
     input:
     tuple val(id), path(contig)
     path("seq1/*")
@@ -211,7 +211,7 @@ process coverm {
 }
 
 process metabat2 {
-    publishDir "${params.out}/metabat2", mode: 'symlink'
+    publishDir "${params.out}/binning/metabat2", mode: 'symlink'
 
     input:
     tuple val(id), path(contig), path("bam/*")
@@ -228,7 +228,7 @@ process metabat2 {
 }
 
 process rename_bin_header {
-    publishDir "${params.out}/bins/fasta", mode: 'symlink'
+    publishDir "${params.out}/binning/bins/fasta", mode: 'symlink'
 
     input:
     path(bin)
@@ -246,7 +246,7 @@ process rename_bin_header {
 
 /* replace with prodigal-gv? */
 process prodigal {
-    publishDir "${params.out}/bins/prodigal", mode: 'symlink'
+    publishDir "${params.out}/binning/bins/prodigal", mode: 'symlink'
 
     input:
     tuple val(id), path(bin)
@@ -261,7 +261,7 @@ process prodigal {
 }
 
 process hmmsearch_with_NCVOGs {
-    publishDir "${params.out}/NCVOG/hmm", mode: 'symlink'
+    publishDir "${params.out}/putative_NCLDV/NCVOG/hmm", mode: 'symlink'
 
     input:
     tuple val(id), path(faa)
@@ -289,7 +289,7 @@ process classify_NCLDV_bin {
 }
 
 process summarize_NCVOG_results {
-    publishDir "${params.out}/NCVOG", mode: 'symlink'
+    publishDir "${params.out}/putative_NCLDV/NCVOG", mode: 'symlink'
 
     input:
     path("table/*")
