@@ -35,6 +35,11 @@ params.additional_NCLDV_149_hmm="$baseDir/data/hmm/NCLDV_149/NCLDV_149.hmm"
 params.hallmark_hmm="$baseDir/data/hmm/hallmark/hallmark.hmm"
 params.hallmark_genes="DNApolB,MCP_NCLDVs,pATPase_all,Primase_all,RNAP-a_all,RNAP-b_all,TFIIS,VLTF3"
 params.hallmark_hmm_score_threshold="150,80,80,80,200,200,100,80"
+
+/* validation settings */
+params.hallmark_genes_for_validation="DNApolB,MCP_NCLDVs,pATPase_all,TFIIS,VLTF3"
+
+
 log.info"""
 """
 
@@ -140,14 +145,32 @@ workflow {
         hmmsearch_with_hallmark_genes.out.tblout
     )
 
-    hallmark_genes_detection_result_list = detect_hallmark_genes_from_bin.out.map{it[1]}.toList()
+    hallmark_genes_detection_result_list = detect_hallmark_genes_from_bin.out.table.map{it[1]}.toList()
     
     summarize_detected_hallmark_genes(
         hallmark_genes_detection_result_list
     )
     /*03 finnished*/
 
-    /*03 finnished */
+    /*04 vaildate NCLDV bins*/
+    validate_ncldv_bin_input_ch = summarize_assessment.out.summary.combine(detect_hallmark_genes_from_bin.out.table, by:0)
+
+    validate_ncldv_bin(
+        validate_ncldv_bin_input_ch
+    )
+
+    validated_ncldv_bin_and_prot_ch = validate_ncldv_bin.out /* filter putative NCLDV bins */
+                                                    .filter {
+                                                        it[2].readLines().last().split('\t').last().toBoolean()
+                                                    }
+                                                    .map{[it[0], it[1]]}.combine(prodigal.out.faa, by: 0)
+
+    validate_ncldv_bin_result_list = validate_ncldv_bin.out.table.map{it[2]}.toList()
+    
+    summarize_ncldv_bin_validation(
+        validate_ncldv_bin_result_list
+    )
+    /*04 finnished*/
 }
 
 /*
@@ -428,5 +451,33 @@ process summarize_detected_hallmark_genes {
     script:
     """
     python ${baseDir}/bin/summarize_table.py -i ./table -p .hallmark_presense.tsv -o hallmark_genes.tsv
+    """
+}
+
+process validate_ncldv_bin {
+    input:
+    tuple val(id), path(bin), path(assessment_summary), path(hallmark_summary)
+
+    output:
+    tuple val(id), path(bin), path("${id}.NCLDV_validation.tsv"), emit:'table'
+
+    script:
+    """
+    python ${baseDir}/bin/validate_NCLDV_bin.py -a ${assessment_summary} -m ${hallmark_summary} -c ${params.hallmark_genes_for_validation} -o ${id}.NCLDV_validation.tsv
+    """
+}
+
+process summarize_ncldv_bin_validation {
+    publishDir "${params.out}/validation", mode: 'symlink'
+
+    input:
+    path("table/*")
+    
+    output:
+    path("NCLDV_validation.tsv")
+
+    script:
+    """
+    python ${baseDir}/bin/summarize_table.py -i ./table -p .NCLDV_validation.tsv -o NCLDV_validation.tsv
     """
 }
