@@ -159,13 +159,13 @@ workflow {
         validate_ncldv_bin_input_ch
     )
 
-    validated_ncldv_bin_and_prot_ch = validate_ncldv_bin.out /* filter putative NCLDV bins */
+    validated_ncldv_bin_and_prot_ch = validate_ncldv_bin.out /* filter validated NCLDV bins */
                                                     .filter {
-                                                        it[2].readLines().last().split('\t').last().toBoolean()
+                                                        it[1].readLines().last().split('\t').last().toBoolean()
                                                     }
-                                                    .map{[it[0], it[1]]}.combine(prodigal.out.faa, by: 0)
+                                                    /*.map{[it[0], it[1]]}.combine(prodigal.out.faa, by: 0)*/
 
-    validate_ncldv_bin_result_list = validate_ncldv_bin.out.table.map{it[2]}.toList()
+    validate_ncldv_bin_result_list = validate_ncldv_bin.out.table.map{it[1]}.toList()
     
     summarize_ncldv_bin_validation(
         validate_ncldv_bin_result_list
@@ -286,7 +286,7 @@ process prodigal {
 }
 
 process hmmsearch_with_NCVOGs {
-    publishDir "${params.out}/putative_NCLDV/NCVOG/tblout", mode: 'symlink'
+    publishDir "${params.out}/detect_NCLDV/tblout", mode: 'symlink'
 
     input:
     tuple val(id), path(faa)
@@ -314,7 +314,7 @@ process classify_NCLDV_bin {
 }
 
 process summarize_NCVOG_results {
-    publishDir "${params.out}/putative_NCLDV/NCVOG", mode: 'symlink'
+    publishDir "${params.out}/detect_NCLDV/", mode: 'symlink'
 
     input:
     path("table/*")
@@ -329,7 +329,7 @@ process summarize_NCVOG_results {
 }
 
 process viralrecall {
-    publishDir "${params.out}/assessment/viralrecall", mode: 'symlink'
+    publishDir "${params.out}/validate_NCLDV/assessment/viralrecall", mode: 'symlink'
 
     input:
     tuple val(id), path(bin)
@@ -345,7 +345,7 @@ process viralrecall {
 }
 
 process virsorter2 {
-    publishDir "${params.out}/assessment/virsorter2", mode: 'symlink'
+    publishDir "${params.out}/validate_NCLDV/assessment/virsorter2", mode: 'symlink'
 
     input:
     tuple val(id), path(bin)
@@ -361,7 +361,7 @@ process virsorter2 {
 }
 
 process CAT {
-    publishDir "${params.out}/assessment/CAT", mode: 'symlink'
+    publishDir "${params.out}/validate_NCLDV/assessment/CAT", mode: 'symlink'
 
     input:
     tuple val(id), path(bin)
@@ -380,7 +380,7 @@ process CAT {
 /* the ivy's docs said 1e-10 */
 /* original code said 1e-50 */
 process hmmsearch_with_NCLDV_149_hmm {
-    publishDir "${params.out}/assessment/NCLDV_149_hmm", mode: 'symlink'
+    publishDir "${params.out}/validate_NCLDV/assessment/NCLDV_149_hmm", mode: 'symlink'
 
     input:
     tuple val(id), path(faa)
@@ -395,13 +395,13 @@ process hmmsearch_with_NCLDV_149_hmm {
 }
 
 process summarize_assessment {
-    publishDir "${params.out}/assessment/summary", mode: 'symlink'
+    publishDir "${params.out}/validate_NCLDV/assessment/summary", mode: 'symlink'
 
     input:
     tuple val(id), path(bin), path(viralrecall), path(virsorter2), path(CAT), path(tblout)
     
     output:
-    tuple val(id), path(bin), path("${id}.NCLDV_assessment.tsv"), emit:'summary'
+    tuple val(id), path("${id}.NCLDV_assessment.tsv"), emit:'summary'
 
     script:
     """
@@ -412,7 +412,7 @@ process summarize_assessment {
 /* the ivy's docs said 5 hallmark genes */
 /* original code said 8 hallmark genes */
 process hmmsearch_with_hallmark_genes {
-    publishDir "${params.out}/hallmark/tblout", mode: 'symlink'
+    publishDir "${params.out}/validate_NCLDV/hallmark/tblout", mode: 'symlink'
 
     input:
     tuple val(id), path(faa)
@@ -440,7 +440,7 @@ process detect_hallmark_genes_from_bin{
 }
 
 process summarize_detected_hallmark_genes {
-    publishDir "${params.out}/hallmark", mode: 'symlink'
+    publishDir "${params.out}/validate_NCLDV/hallmark", mode: 'symlink'
 
     input:
     path("table/*")
@@ -456,10 +456,10 @@ process summarize_detected_hallmark_genes {
 
 process validate_ncldv_bin {
     input:
-    tuple val(id), path(bin), path(assessment_summary), path(hallmark_summary)
+    tuple val(id), path(assessment_summary), path(hallmark_summary)
 
     output:
-    tuple val(id), path(bin), path("${id}.NCLDV_validation.tsv"), emit:'table'
+    tuple val(id), path("${id}.NCLDV_validation.tsv"), emit:'table'
 
     script:
     """
@@ -468,7 +468,7 @@ process validate_ncldv_bin {
 }
 
 process summarize_ncldv_bin_validation {
-    publishDir "${params.out}/validation", mode: 'symlink'
+    publishDir "${params.out}/validate_NCLDV", mode: 'symlink'
 
     input:
     path("table/*")
