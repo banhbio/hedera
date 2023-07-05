@@ -97,15 +97,13 @@ workflow {
         classifier_input_ch
     )
 
-    classify_NCLDV_bin.out.bin /* filter putative NCLDV bins */
-                .branch {
-                    ncldv: it[2].readLines().last().split('\t').last().toFloat() > params.core_gene_index
-                    all: true
-                }
-                .set {result}
+    putative_ncldv_bin_and_prot_ch = classify_NCLDV_bin.out /* filter putative NCLDV bins */
+                                                    .filter {
+                                                        ncldv: it[2].readLines().last().split('\t').last().toFloat() > params.core_gene_index
+                                                    }
+                                                    .map{[it[0], it[1]]}.combine(prodigal.out.faa, by: 0)
 
-    putative_ncldv_bin_and_prot_ch = result.ncldv.map{[it[0], it[1]]}.combine(prodigal.out.faa, by: 0)
-    classifier_result_list = result.all.map{it[2]}.toList()
+    classifier_result_list = classify_NCLDV_bin.out.map{it[2]}.toList()
     
     summarize_NCVOG_results(classifier_result_list)
     /*02 finnished */
@@ -379,6 +377,8 @@ process summarize_assessment {
     
     output:
     tuple val(id), path("${id}.NCLDV_assessment.tsv"), emit:'assessment_summary'
+
+    script:
     """
     python ${baseDir}/bin/summarize_assessment_results.py -f ${bin} -r ${viralrecall} -s ${virsorter2} -c ${CAT} -n ${tblout} -o ${id}.NCLDV_assessment.tsv
     """
