@@ -371,6 +371,19 @@ process hmmsearch_with_NCLDV_VIRUS_149_hmm {
     """
 }
 
+process summarize_assessment {
+    publishDir "${params.out}/assessment/summary", mode: 'symlink'
+
+    input:
+    tuple val(id), path(bin), path(viralrecall), path(virsorter2), path(CAT), path(tblout)
+    
+    output:
+    tuple val(id), path("${id}.NCLDV_assessment.tsv"), emit:'assessment_summary'
+    """
+    python ${baseDir}/bin/summarize_assessment_results.py -f ${bin} -r ${viralrecall} -s ${virsorter2} -c ${CAT} -n ${tblout} -o ${id}.NCLDV_assessment.tsv
+    """
+}
+
 /* the ivy's docs said 5 hallmark genes */
 /* original code said 8 hallmark genes */
 process hmmsearch_with_hallmark_genes {
