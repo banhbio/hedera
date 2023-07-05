@@ -5,7 +5,7 @@ import numpy as np
 
 
 def process_hmm_results(hmm_file, hallmarks_list, scoredict):
-    df = pd.DataFrame(np.zeros((1, len(hallmarks_list))), columns=hallmarks_list)
+    df = pd.DataFrame(np.zeros((1, len(hallmarks_list)), dtype=int), columns=hallmarks_list)
 
     with open(hmm_file, "r") as infile:
         lines = infile.readlines()
@@ -15,11 +15,11 @@ def process_hmm_results(hmm_file, hallmarks_list, scoredict):
             else:
                 data = line.split()
                 hallmark = data[2]
-                score = data[5]
-                if score >= scoredict[hallmark]
+                score = float(data[5])
+                if score >= scoredict[hallmark]:
                     df[hallmark] += 1
-
-    df["total"] = df.sum(axis=1)
+    
+    df['total'] = df.sum(axis=1)
     return df
 
 def main():
@@ -32,7 +32,7 @@ def main():
     args = parser.parse_args()
 
     hallmarks_list = args.nhallmark.split(',')
-    score_list = [int(i) for i in args.score.split(',')]
+    score_list = [float(i) for i in args.score.split(',')]
     scoredict = dict(zip(hallmarks_list, score_list))
 
     df = process_hmm_results(args.hmm, hallmarks_list, scoredict)

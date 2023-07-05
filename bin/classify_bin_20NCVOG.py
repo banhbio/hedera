@@ -11,7 +11,7 @@ def calculate_genome_size(fasta_file):
     return genome_size
 
 def process_hmm_results(hmm_file, genome_size, NCVOGs_list, weightdict):
-    df = pd.DataFrame(np.zeros((1, len(NCVOGs_list))), columns=NCVOGs_list)
+    df = pd.DataFrame(np.zeros((1, len(NCVOGs_list)), dtype=int), columns=NCVOGs_list)
 
 #Multiple NCVOGs in one genome count as one.
     with open(hmm_file, "r") as infile:
