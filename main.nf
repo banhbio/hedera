@@ -30,16 +30,11 @@ params.core_gene_index=5.75
 params.virsorter_groups="dsDNAphage,NCLDV,RNA,ssDNA,lavidaviridae"
 params.CAT_DB="$baseDir/data/CAT/CAT_prepare_20210107/2021-01-07_CAT_database"
 params.CAT_Taxonomy="$baseDir/data/CAT/CAT_prepare_20210107/2021-01-07_taxonomy"
-params.additional_149_NCVOG_hmm="$baseDir/data/hmm/NCLDV_VIRUS_149_hmm/genes.hmm"
-/*
-params.hallmark_hmm="$baseDir/data/hmm/hallmark/hallmark.hmm"
-params.hallmark_genes="DNApolB,MCP_all,pATPase_all,Primase_all,RNAP-a_all,RNAP-b_all,TFIIS,VLTF3"
-params.hallmark_hmm_score_threshold="150,80,80,80,200,200,100,80"
-*/
-params.hallmark_hmm="$baseDir/data/hmm/hallmark/tmp/hallmark_without_MCP.hmm"
-params.hallmark_genes="DNApolB,pATPase_all,Primase_all,RNAP-a_all,RNAP-b_all,TFIIS,VLTF3"
-params.hallmark_hmm_score_threshold="150,80,80,200,200,100,80"
+params.additional_NCLDV_149_hmm="$baseDir/data/hmm/NCLDV_149/NCLDV_149.hmm"
 
+params.hallmark_hmm="$baseDir/data/hmm/hallmark/hallmark.hmm"
+params.hallmark_genes="DNApolB,MCP_NCLDVs,pATPase_all,Primase_all,RNAP-a_all,RNAP-b_all,TFIIS,VLTF3"
+params.hallmark_hmm_score_threshold="150,80,80,80,200,200,100,80"
 log.info"""
 """
 
@@ -104,7 +99,7 @@ workflow {
                                                     .map{[it[0], it[1]]}.combine(prodigal.out.faa, by: 0)
 
     classifier_result_list = classify_NCLDV_bin.out.map{it[2]}.toList()
-    
+
     summarize_NCVOG_results(classifier_result_list)
     /*02 finnished */
 
@@ -124,27 +119,33 @@ workflow {
         putative_ncldv_bin_ch
     )
 
-    hmmsearch_with_NCLDV_VIRUS_149_hmm(
+    hmmsearch_with_NCLDV_149_hmm(
         putative_ncldv_prot_ch
     )
 
     assessment_results_ch = putative_ncldv_bin_ch.combine(viralrecall.out.tsv, by: 0)
                                                  .combine(virsorter2.out.tsv, by: 0)
                                                  .combine(CAT.out.txt, by: 0)
-                                                 .combine(hmmsearch_with_NCLDV_VIRUS_149_hmm.out.tblout, by: 0)
+                                                 .combine(hmmsearch_with_NCLDV_149_hmm.out.tblout, by: 0)
 
     summarize_assessment(
         assessment_results_ch
     )
-/*
+
     hmmsearch_with_hallmark_genes(
         putative_ncldv_prot_ch
     )
 
-    summarize_detected_hallmark_genes(
+    detect_hallmark_genes_from_bin(
         hmmsearch_with_hallmark_genes.out.tblout
     )
-*/
+
+    hallmark_genes_detection_result_list = detect_hallmark_genes_from_bin.out.map{it[1]}.toList()
+    
+    summarize_detected_hallmark_genes(
+        hallmark_genes_detection_result_list
+    )
+
     /*03 finnished */
 }
 
@@ -354,7 +355,7 @@ process CAT {
 /* Is it correct threshold? */
 /* the ivy's docs said 1e-10 */
 /* original code said 1e-50 */
-process hmmsearch_with_NCLDV_VIRUS_149_hmm {
+process hmmsearch_with_NCLDV_149_hmm {
     publishDir "${params.out}/assessment/NCLDV_VIRUS_149_hmm", mode: 'symlink'
 
     input:
@@ -365,7 +366,7 @@ process hmmsearch_with_NCLDV_VIRUS_149_hmm {
 
     script:
     """
-    hmmsearch --tblout ${id}.149_hmm.tblout --notextw -E 1e-50 --cpu ${task.cpus} ${params.additional_149_NCVOG_hmm} ${faa}
+    hmmsearch --tblout ${id}.149_hmm.tblout --notextw -E 1e-50 --cpu ${task.cpus} ${params.additional_NCLDV_149_hmm} ${faa}
     """
 }
 
@@ -401,7 +402,7 @@ process hmmsearch_with_hallmark_genes {
     """
 }
 
-process detect_hallmark_NCLDV_bin {
+process detect_hallmark_genes_from_bin{
     input:
     tuple val(id), path(tblout)
 

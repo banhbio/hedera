@@ -1,8 +1,0 @@
-/aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_MCP/genes.hmm
-/aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_Primase/genes.hmm
-/aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_DNApolB/genes.hmm
-/aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_RNA_a/genes.hmm
-/aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_RNA_b/genes.hmm
-/aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_TFIIS/genes.hmm
-/aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_VLTF3/genes.hmm
-/aptmp/ideas2/ivyyue/anvio/anvio_bams/NCLDV_coregene_hmm_tom_faylward_bitscore/NCLDV_pATPase/genes.hmm
