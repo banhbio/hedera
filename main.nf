@@ -130,14 +130,15 @@ workflow {
         putative_ncldv_prot_ch
     )
 
-    assessment_results_ch = viralrecall.out.tsv.combine(virsorter2.out.tsv, by: 0)
-                                               .combine(CAT.out.txt, by: 0)
-                                               .combine(hmmsearch_with_NCLDV_VIRUS_149_hmm.out.tblout, by: 0)
-/*    
-    summarize_assesssment(
+    assessment_results_ch = putative_ncldv_bin_ch.combine(viralrecall.out.tsv, by: 0)
+                                                 .combine(virsorter2.out.tsv, by: 0)
+                                                 .combine(CAT.out.txt, by: 0)
+                                                 .combine(hmmsearch_with_NCLDV_VIRUS_149_hmm.out.tblout, by: 0)
+
+    summarize_assessment(
         assessment_results_ch
     )
-*/
+/*
     hmmsearch_with_hallmark_genes(
         putative_ncldv_prot_ch
     )
@@ -145,6 +146,7 @@ workflow {
     summarize_detected_hallmark_genes(
         hmmsearch_with_hallmark_genes.out.tblout
     )
+*/
     /*03 finnished */
 }
 
