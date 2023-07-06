@@ -215,12 +215,13 @@ process megahit {
     tuple val(id), path(forward), path(backward)
 
     output:
-    tuple val(id), path("megahit/${id}.megahit.contigs.fa"), emit: 'contig'
+    tuple val(id), path("${id}.megahit.contigs.fa"), emit: 'contig'
 
     script:
     mem = (task.memory =~ /(\d+).GB/)[0][1] 
     """
     megahit -1 ${forward} -2 ${backward} -m 0.3 --k-min 21 --k-max 141 --k-step 12 -t ${task.cpus} -o megahit --out-prefix ${id}.megahit --min-contig-len 2500
+    mv megahit/${id}.megahit.contig.fa .
     """
 }
 
@@ -417,8 +418,6 @@ process summarize_assessment {
     """
 }
 
-/* the ivy's docs said 5 hallmark genes */
-/* original code said 8 hallmark genes */
 process hmmsearch_with_hallmark_genes {
     publishDir "${params.out}/validate_NCLDV/hallmark/tblout", mode: 'symlink'
 
