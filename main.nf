@@ -79,19 +79,19 @@ workflow {
     /* collect all bins */
     bin_ch = metabat2.out.bins.flatten()
 
-    rename_bin_header(
+    rename_bin(
         bin_ch
     )
 
     prodigal(
-        rename_bin_header.out.bin
+        rename_bin.out.bin
     )
 
     hmmsearch_with_NCVOGs(
         prodigal.out.faa
     )
 
-    classifier_input_ch = rename_bin_header.out.bin.combine(hmmsearch_with_NCVOGs.out.tblout, by: 0)
+    classifier_input_ch = rename_bin.out.bin.combine(hmmsearch_with_NCVOGs.out.tblout, by: 0)
     
     classify_NCLDV_bin(
         classifier_input_ch
@@ -207,6 +207,7 @@ what megahit kmer is usualy used?
 WIP: --k-min 21 --k-max 141
 
 Filter out contigs shorter than 2500nt
+Then rename contig header by run id
 */
 process megahit {
     publishDir "${params.out}/binning/assembly", mode: 'symlink'
@@ -215,13 +216,13 @@ process megahit {
     tuple val(id), path(forward), path(backward)
 
     output:
-    tuple val(id), path("${id}.megahit.contigs.fa"), emit: 'contig'
+    tuple val(id), path("${id}.megahit.rename.contigs.fa"), emit: 'contig'
 
     script:
     mem = (task.memory =~ /(\d+).GB/)[0][1] 
     """
     megahit -1 ${forward} -2 ${backward} -m 0.3 --k-min 21 --k-max 141 --k-step 12 -t ${task.cpus} -o megahit --out-prefix ${id}.megahit --min-contig-len 2500
-    mv megahit/${id}.megahit.contig.fa .
+    seqkit replace -p '^' -r '${id}_' megahit/${id}.megahit.contigs.fa > ${id}.megahit.rename.contigs.fa
     """
 }
 
@@ -261,21 +262,20 @@ process metabat2 {
     """
 }
 
-process rename_bin_header {
+process rename_bin {
     publishDir "${params.out}/binning/bins/fasta", mode: 'symlink'
 
     input:
     path(bin)
 
     output:
-    tuple val(bin_id), path("${bin_id}.fasta"), emit: 'bin'
+    tuple val(id), path("${id}.fasta"), emit: 'bin'
 
     script:
     /* define new header */
-    run_id=bin.getSimpleName()
-    bin_id=bin.getBaseName().replaceAll(/\./,"_")
+    id=bin.getBaseName().replaceAll(/\./,"_")
     """
-    seqkit replace -p "k141" -r '${run_id}_k141' ${bin} > ${bin_id}.fasta 
+    mv ${bin} ${id}.fasta 
     """
 }
 
