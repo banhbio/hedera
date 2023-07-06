@@ -268,13 +268,14 @@ process rename_bin_header {
     path(bin)
 
     output:
-    tuple val(id), path("${id}.fasta"), emit: 'bin'
+    tuple val(bin_id), path("${bin_id}.fasta"), emit: 'bin'
 
     script:
     /* define new header */
-    id=bin.getBaseName().replaceAll(/\./,"_")
+    run_id=bin.getSimpleName()
+    bin_id=bin.getBaseName().replaceAll(/\./,"_")
     """
-    seqkit replace -p "k141" -r '${id}_k141' ${bin} > ${id}.fasta 
+    seqkit replace -p "k141" -r '${run_id}_k141' ${bin} > ${bin_id}.fasta 
     """
 }
 
