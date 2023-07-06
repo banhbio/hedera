@@ -159,11 +159,12 @@ workflow {
         validate_ncldv_bin_input_ch
     )
 
-    validated_ncldv_bin_and_prot_ch = validate_ncldv_bin.out /* filter validated NCLDV bins */
-                                                    .filter {
-                                                        it[1].readLines().last().split('\t').last().toBoolean()
-                                                    }
-                                                    /*.map{[it[0], it[1]]}.combine(prodigal.out.faa, by: 0)*/
+    validated_ncldv_bin_ch = validate_ncldv_bin.out.table /* filter validated NCLDV bins */
+                                                .filter {
+                                                    it[1].readLines().last().split('\t').last().toBoolean()
+                                                }
+                                                .map{[it[0]]}
+                                                .combine(putative_ncldv_bin_ch, by: 0)
 
     validate_ncldv_bin_result_list = validate_ncldv_bin.out.table.map{it[1]}.toList()
     
@@ -171,6 +172,13 @@ workflow {
         validate_ncldv_bin_result_list
     )
     /*04 finnished*/
+
+    /*05 remove cellular contig */
+    remove_cellular_contig_input_ch = validated_ncldv_bin_ch.combine(summarize_assessment.out.summary, by: 0)
+
+    remove_cellular_contig(
+        remove_cellular_contig_input_ch
+    )
 }
 
 /*
@@ -479,5 +487,20 @@ process summarize_ncldv_bin_validation {
     script:
     """
     python ${baseDir}/bin/summarize_table.py -i ./table -p .NCLDV_validation.tsv -o NCLDV_validation.tsv
+    """
+}
+
+process remove_cellular_contig {
+    publishDir "${params.out}/decontamination"
+
+    input:
+    tuple val(id), path(bin), path(summary)
+
+    output:
+    tuple val(id), path("${id}.decontaminated.fasta")
+
+    script:
+    """
+    cat ${summary} | awk -F '\t' 'NR>2 && \$6 != 0 {print \$1}' | seqkit grep -f - ${bin} > ${id}.decontaminated.fasta
     """
 }

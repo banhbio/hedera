@@ -18,7 +18,7 @@ Original source code was provided by Ivy (Yue Fang).
 5. [x] detect putative NCLDV bins
 6. [x] assessment of GV characteristics of the contigs
 7. [x] discard nonNCLDV bins
-8. [ ] remove cellular contigs
+8. [x] remove cellular contigs
 9. [ ] delineage NCLDV bins
 10. [ ] further decontaminate NCLDV bins
 
