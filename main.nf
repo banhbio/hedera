@@ -39,6 +39,8 @@ params.hallmark_hmm_score_threshold="150,80,80,80,200,200,100,80"
 /* validation settings */
 params.hallmark_genes_for_validation="DNApolB,MCP_NCLDVs,pATPase_all,TFIIS,VLTF3"
 
+/* delineage settings */
+params.hallmark_scgs="DNApolB,pATPase_all,TFIIS,VLTF3"
 
 log.info"""
 """
@@ -71,7 +73,6 @@ workflow {
     metabat2(
         metabat2_input_ch
     )
-
     /*01 finnished*/
 
     /*02 detect putative NCLDV bins*/
@@ -141,8 +142,10 @@ workflow {
         putative_ncldv_prot_ch
     )
 
+    detect_hallmark_genes_from_bin_ch = putative_ncldv_bin_ch.combine(hmmsearch_with_hallmark_genes.out.tblout, by: 0)
+
     detect_hallmark_genes_from_bin(
-        hmmsearch_with_hallmark_genes.out.tblout
+        detect_hallmark_genes_from_bin_ch
     )
 
     hallmark_genes_detection_result_list = detect_hallmark_genes_from_bin.out.table.map{it[1]}.toList()
@@ -153,7 +156,7 @@ workflow {
     /*03 finnished*/
 
     /*04 vaildate NCLDV bins*/
-    validate_ncldv_bin_input_ch = summarize_assessment.out.summary.combine(detect_hallmark_genes_from_bin.out.table, by:0)
+    validate_ncldv_bin_input_ch = summarize_assessment.out.summary.combine(detect_hallmark_genes_from_bin.out.table, by: 0)
 
     validate_ncldv_bin(
         validate_ncldv_bin_input_ch
@@ -161,15 +164,16 @@ workflow {
 
     validated_ncldv_bin_ch = validate_ncldv_bin.out.table /* filter validated NCLDV bins */
                                                 .filter {
-                                                    it[1].readLines().last().split('\t').last().toBoolean()
+                                                    validated: it[1].readLines().last().split('\t').last().toBoolean()
                                                 }
-                                                .map{[it[0]]}
                                                 .combine(putative_ncldv_bin_ch, by: 0)
+                                                .map{[it[0], it[2]]}
 
-    validate_ncldv_bin_result_list = validate_ncldv_bin.out.table.map{it[1]}.toList()
+
+    validated_ncldv_bin_result_list = validate_ncldv_bin.out.table.map{it[1]}.toList()
     
     summarize_ncldv_bin_validation(
-        validate_ncldv_bin_result_list
+        validated_ncldv_bin_result_list
     )
     /*04 finnished*/
 
@@ -179,6 +183,84 @@ workflow {
     remove_cellular_contig(
         remove_cellular_contig_input_ch
     )
+    /*05 finnished*/
+
+    /*06 delineage NCLDV bin*/
+
+    delineage_candidate_input_ch = remove_cellular_contig.out.bin
+                                                        .combine(detect_hallmark_genes_from_bin.out.table_per_contig, by: 0)
+                                                        .map{[it[0].split("_").init().init().join("_"),
+                                                              it[0], it[1], it[2]]}
+                                                        .combine(metabat2.out.depth, by:0)
+                                                        .map{[it[1], it[2], it[3], it[4]]}
+
+    find_delineage_candidate(
+        delineage_candidate_input_ch,
+    )
+
+    count_tetramer(
+        remove_cellular_contig.out.bin
+    )
+
+    find_delineage_candidate.out.candidate
+                            .combine(count_tetramer.out.tetramer, by:0)
+                            .branch{
+                                    candidate: it[3].readLines().last().split('\t').last().toBoolean()
+                                    clean: true
+                                }
+                            .set {delineage}
+
+    delineage_candidate_finding_result = find_delineage_candidate.out.candidate.map{it[3]}.toList()
+
+    summarize_delineage_candidate_finding_result(
+        delineage_candidate_finding_result
+    )
+
+    delineage_clean_bin_ch = delineage.clean.map{[it[0], it[1], it[2], it[4]]}
+    
+    /*
+        Delineage process requires 4 files: 1) bin fasta.
+                                           2) depth of contigs in bin (depth.txt).
+                                           3) tetra nucleotide frequency.
+                                           3) NCLDV score of contigs in bin (summary.tsv).
+                                           4) Taxonomic annotation of contigs in bin (CAT.txt).
+    */
+    delineage_input_ch = delineage.candidate.map{[it[0], it[1], it[2], it[4]]}
+                                        .combine(detect_hallmark_genes_from_bin.out.table_per_contig, by: 0)
+                                        .combine(summarize_assessment.out.summary, by: 0)
+
+    delineage_bin(
+        delineage_input_ch
+    )
+
+    delineage_bin_result = delineage_bin.out.table.toList()
+
+    summarize_delineage_bin_result(
+        delineage_bin_result
+    )
+
+    postdelineage_input_ch = delineage_bin.out.bin.flatMap{
+                                                    item ->
+                                                        /* check if the delineaged output is a list */
+                                                        if (item[0] instanceof List) {
+                                                            item[0].collect {bin -> [bin, item[1]]}
+                                                        }else{
+                                                            // If the bin is single, return the item
+                                                            [item]
+                                                        }   
+                                                    }
+
+    postdelineage_input_ch.view()
+
+    postdelineage(
+        postdelineage_input_ch
+    )
+
+    after_delineage_bin_ch = delineage_clean_bin_ch.mix(postdelineage.out.bin)
+
+    second_decontamination(
+        after_delineage_bin_ch
+    )
 }
 
 /*
@@ -186,7 +268,7 @@ WIP: fastp
 WIP: -3 -W 6 -M 30 -q 20 -u 50 -n 0 -p -l 50
 */
 process fastp {
-    publishDir "${params.out}/binning/quality_check", mode: 'symlink'
+    publishDir "${params.out}/binning/fastp", mode: 'symlink'
 
     input:
     tuple val(id), path("seq1.fq.gz"), path("seq2.fq.gz")
@@ -253,12 +335,12 @@ process metabat2 {
 
     output:
     path("${id}.metabat2bin/*"), emit: 'bins'
-    path("${id}.depth.txt"), emit: 'depth'
+    tuple val(id), path("${id}.depth.txt"), emit: 'depth'
 
     script:
     """
     jgi_summarize_bam_contig_depths --outputDepth ${id}.depth.txt bam/*.bam
-    metabat2 -i ${contig} -a ${id}.depth.txt -v -o ${id}.metabat2bin/${id}.matabat2bin
+    metabat2 -i ${contig} -a ${id}.depth.txt -v -o ${id}.metabat2bin/${id}.metabat2bin
     """
 }
 
@@ -272,10 +354,9 @@ process rename_bin {
     tuple val(id), path("${id}.fasta"), emit: 'bin'
 
     script:
-    /* define new header */
-    id=bin.getBaseName().replaceAll(/\./,"_")
+    id = bin.getBaseName().replace(".", "_")
     """
-    mv ${bin} ${id}.fasta 
+    cp ${bin} ${id}.fasta
     """
 }
 
@@ -434,16 +515,18 @@ process hmmsearch_with_hallmark_genes {
     """
 }
 
-process detect_hallmark_genes_from_bin{
+process detect_hallmark_genes_from_bin {
     input:
-    tuple val(id), path(tblout)
+    tuple val(id), path(bin), path(tblout)
 
     output:
-    tuple val(id), path("${id}.hallmark_presense.tsv"), emit:'table'
+    tuple val(id), path("${id}.hallmark_total.tsv"), emit:'table'
+    tuple val(id), path("${id}.hallmark_per_contigs.tsv"), emit:'table_per_contig'
 
     script:
     """
-    python ${baseDir}/bin/detect_hallmark.py -t ${tblout} -n ${params.hallmark_genes} -s ${params.hallmark_hmm_score_threshold}  -o ${id}.hallmark_presense.tsv
+    echo "unchi"
+    python ${baseDir}/bin/detect_hallmark.py -f ${bin} -t ${tblout} -n ${params.hallmark_genes} -s ${params.hallmark_hmm_score_threshold}  -o ${id}.hallmark_total.tsv -O ${id}.hallmark_per_contigs.tsv
     """
 }
 
@@ -491,16 +574,128 @@ process summarize_ncldv_bin_validation {
 }
 
 process remove_cellular_contig {
-    publishDir "${params.out}/decontamination"
+    publishDir "${params.out}/decontamination/bins/fasta", mode: 'symlink'
 
     input:
     tuple val(id), path(bin), path(summary)
 
     output:
-    tuple val(id), path("${id}.decontaminated.fasta")
+    tuple val(id), path("${id}.decontaminated.fasta"), emit:'bin'
 
     script:
     """
     cat ${summary} | awk -F '\t' 'NR>2 && \$6 != 0 {print \$1}' | seqkit grep -f - ${bin} > ${id}.decontaminated.fasta
+    """
+}
+
+process find_delineage_candidate {
+    input:
+    tuple val(id), path(bin), path(hallmark_summary), path(depth)
+
+    output:
+    tuple val(id), path(bin), path("${id}.depth.txt"), path("${id}.delineage_candidate.tsv"), emit:'candidate'
+
+    script:
+    """
+    cat ${bin} | seqkit seq -ni | csvtk grep -t -f1 -P - ${depth} > ${id}.depth.txt
+    python ${baseDir}/bin/find_delineage_candidate.py -m ${hallmark_summary} -s ${params.hallmark_scgs} -d ${id}.depth.txt -o ${id}.delineage_candidate.tsv
+    """
+}
+
+process count_tetramer {
+    input:
+    tuple val(id), path(bin)
+
+    output:
+    tuple val(id), path("${id}.tetramer.tsv"), emit:'tetramer'
+
+    script:
+    """
+    cat ${bin} | cgat fasta2kmercontent -k 4 -p | grep -v "^#" > ${id}.tetramer.tsv
+    """
+}
+
+process summarize_delineage_candidate_finding_result {
+    publishDir "${params.out}/delineage_NCLDV", mode: 'symlink'
+
+    input:
+    path("table/*")
+    
+    output:
+    path("delineage_candidate.tsv")
+
+    script:
+    """
+    python ${baseDir}/bin/summarize_table.py -i ./table -p .delineage_candidate.tsv -o delineage_candidate.tsv
+    """
+}
+
+process delineage_bin {
+    input:
+    tuple val(id), path(bin), path(depth), path(tetramer), path(hallmark_summary), path(assessment)
+
+    output:
+    tuple path("delineaged_bin/*"), path(depth), emit:'bin'
+    path("${id}.tree"), emit:'tree'
+    path("${id}.delineage_summary.tsv"), emit: 'table'
+
+    script:
+    /* UNDER CONSTRUCTION */
+    """
+    mkdir -p delineaged_bin
+    python ${baseDir}/bin/delineage.py -b ${id} -f ${bin} \
+                                        -t ${tetramer} \
+                                        -d ${depth} \
+                                        -m ${hallmark_summary} \
+                                        -n ${assessment} \
+                                        -s ${params.hallmark_scgs} \
+                                        -o delineaged_bin \
+                                        -O ${id}.tree \
+                                        -S ${id}.delineage_summary.tsv
+    """
+}
+
+process summarize_delineage_bin_result {
+    publishDir "${params.out}/delineage_NCLDV", mode: 'symlink'
+
+    input:
+    path("table/*")
+    
+    output:
+    path("delineage_summary.tsv")
+
+    script:
+    """
+    python ${baseDir}/bin/summarize_table.py -i ./table -p .delineage_summary.tsv -o delineage_summary.tsv
+    """
+}
+
+process postdelineage {
+    input:
+    tuple path(bin), path(depth)
+
+    output:
+    tuple val(id), path(bin), path("${id}.depth.txt"), path("${id}.tetramer.tsv"), emit:'bin'
+
+    script:
+    id = bin.getSimpleName()
+    """
+    cat ${bin} | cgat fasta2kmercontent -k 4 -p | grep -v "^#" > ${id}.tetramer.tsv
+    cat ${bin} | seqkit seq -ni | csvtk grep -t -f1 -P - ${depth} > ${id}.depth.txt
+    """
+}
+
+process second_decontamination {
+    publishDir "${params.out}/final_NCLDV_MAG", mode: 'symlink'
+
+    input:
+    tuple val(id), path(bin), path(depth), path(tetramer)
+
+    output:
+    tuple val(id), path(bin), emit: 'MAG'
+
+    script:
+    """
+    python ${baseDir}/bin/second_decontamination.py -f ${bin} -c ${depth} -t ${tetramer} -o ${id}.mag.fasta
     """
 }
