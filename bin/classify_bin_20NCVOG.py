@@ -37,7 +37,7 @@ def main():
     parser = argparse.ArgumentParser(description='Calculate NVLDVs core genes index from hmmsearch results and genome size.')
     parser.add_argument('-f', '--fasta', type=str, help='Path to the fasta file')
     parser.add_argument('-t', '--hmm', type=str, help='Path to the hmmsearch results file (tblout)')
-    parser.add_argument('-o', '--output', type=str, help='Path to the output file')
+    parser.add_argument('-o', '--output', type=str, help='Path to the output TSV file')
     parser.add_argument('-n', '--ncvogs', type=str, help='Comma-separated list of NCVOGs')
     parser.add_argument('-w', '--weights', type=str, help='Comma-separated list of weights for each NCVOG')
 

@@ -1,10 +1,10 @@
 import argparse
 import pandas as pd
 
-def validate_NCLDV_bin_from_assessment_summary(ncldv_assessment_summary_path, hallmark_gene_summary_path, core_gene_list):
+def validate_NCLDV_bin_from_assessment_summary(ncldv_assessment_summary, hallmark_gene_summary, core_gene_list):
     # Load TSV files
-    ncldv_df = pd.read_csv(ncldv_assessment_summary_path, sep="\t")
-    hallmark_df = pd.read_csv(hallmark_gene_summary_path, sep="\t")
+    ncldv_df = pd.read_csv(ncldv_assessment_summary, sep="\t")
+    hallmark_df = pd.read_csv(hallmark_gene_summary, sep="\t")
 
     # Calculate the ratio of NCLDV_score = 0
     ncldv_zero_ratio = (ncldv_df["NCLDV_score"] == 0).mean()
