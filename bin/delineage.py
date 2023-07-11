@@ -65,8 +65,9 @@ def check_requirements(group, contig_lengths, hallmark_counts, single_copy_genes
     over_2_percent = (group_scores['NCLDV_score'] > 2).mean()
     return total_length, has_hallmark_gene, over_2_percent
 
-def create_summary_df(group1_reqs, group2_reqs):
+def create_summary_df(group1_reqs, group2_reqs, bin_id):
     data = {
+        "ID": [bin_id, bin_id],
         "group": ["group1", "group2"],
         "total_length": [group1_reqs[0], group2_reqs[0]],
         "has_scgs": [int(group1_reqs[1]), int(group2_reqs[1])],
@@ -105,16 +106,16 @@ def annotate_fasta(sequences):
 def main():
     """Process command line arguments and run the script"""
     parser = argparse.ArgumentParser()
-    parser.add_argument("-b", "--bin_id", required=True, help="The bin id")
-    parser.add_argument("-f", "--fasta", required=True, help="Path to the bin contigs fasta file")
-    parser.add_argument("-t", "--tetranucleotide", required=True, help="Path to the 4-mer counts TSV file (produced by cgat)")
+    parser.add_argument("-b", "--bin_id", required=True, type=str, help="The bin id")
+    parser.add_argument("-f", "--fasta", required=True, type=str, help="Path to the bin contigs fasta file")
+    parser.add_argument("-t", "--tetranucleotide", required=True, type=str, help="Path to the 4-mer counts TSV file (produced by cgat)")
     parser.add_argument('-d', '--depth', required=True, type=str, help="Path to the depth file (totalAvgDepth in 3rd column) in TSV format.")
     parser.add_argument('-m', '--hallmark_gene_summary', required=True, type=str, help="Path to the hallmark gene HMMER results summary per contig file in TSV format.")
-    parser.add_argument("-n", "--ncldv_assessment", required=True, help="Path to the NCLDV score assessemt TSV file")
+    parser.add_argument("-n", "--ncldv_assessment", required=True, type=str, help="Path to the NCLDV score assessemt TSV file")
     parser.add_argument('-s', '--scgs', required=True, type=str, help='Comma-separated list of NCLDV single copy genes.')
-    parser.add_argument("-o", "--output", required=True, help="Output directory for bins")
-    parser.add_argument("-O", "--tree_output", required=True, help="Path to the tree output")
-    parser.add_argument("-S", "--summary_output", required=True, help="Path to the summary output TSV file.")
+    parser.add_argument("-o", "--output", required=True, type=str, help="Output directory for bins")
+    parser.add_argument("-O", "--tree_output", required=True, type=str, help="Path to the tree output")
+    parser.add_argument("-S", "--summary_output", required=True, type=str, help="Path to the summary output TSV file.")
 
     args = parser.parse_args()
 
@@ -162,7 +163,7 @@ def main():
     group1_reqs = check_requirements(group1, contig_lengths, hallmark_counts, single_copy_genes, NCLDV_assessment)
     group2_reqs = check_requirements(group2, contig_lengths, hallmark_counts, single_copy_genes, NCLDV_assessment)
     # Generate the summary DataFrame
-    summary_df = create_summary_df(group1_reqs, group2_reqs)
+    summary_df = create_summary_df(group1_reqs, group2_reqs, args.bin_id)
 
     # Save the summary DataFrame to a CSV file
     summary_df.to_csv(args.summary_output, index=False, sep='\t')

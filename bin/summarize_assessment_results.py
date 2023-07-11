@@ -64,12 +64,12 @@ def process_results(contigid_list, viralrecall, virsorter2, cat, ncldvogs):
 
 def main():
     parser = argparse.ArgumentParser(description='Calculate NVLDV scores for each contig in single bin.')
-    parser.add_argument('-f', '--fasta', type=str, help='Path to the fasta file')
-    parser.add_argument('-r', '--viralrecall', type=str, help='Path to the vuralrecall result file')
-    parser.add_argument('-s', '--virsorter2', type=str, help='Path to the virsorter2 result file')
-    parser.add_argument('-c', '--cat', type=str, help='Path to the CAT result file')
-    parser.add_argument('-n', '--ncldvogs', type=str, help='Path to the 149 NCLDVOGs hmmsearch results file (tblout)')
-    parser.add_argument('-o', '--output', type=str, help='Path to the output file')
+    parser.add_argument('-f', '--fasta', required=True, type=str, help='Path to the fasta file')
+    parser.add_argument('-r', '--viralrecall', required=True, type=str, help='Path to the vuralrecall result file')
+    parser.add_argument('-s', '--virsorter2', required=True, type=str, help='Path to the virsorter2 result file')
+    parser.add_argument('-c', '--cat', required=True, type=str, help='Path to the CAT result file')
+    parser.add_argument('-n', '--ncldvogs', required=True, type=str, help='Path to the 149 NCLDVOGs hmmsearch results file (tblout)')
+    parser.add_argument('-o', '--output', required=True, type=str, help='Path to the output file')
 
     args = parser.parse_args()
 

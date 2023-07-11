@@ -10,10 +10,11 @@ def calculate_genome_size(fasta_file):
         genome_size += len(record.seq)
     return genome_size
 
-def process_hmm_results(hmm_file, genome_size, NCVOGs_list, weightdict):
+def process_hmm_results(hmm_file, genome_size, NCVOGs_list, weightdict, bin_id):
     df = pd.DataFrame(np.zeros((1, len(NCVOGs_list)), dtype=int), columns=NCVOGs_list)
 
-#Multiple NCVOGs in one genome count as one.
+    df.insert(0, 'ID', bin_id)
+    #Multiple NCVOGs in one genome count as one.
     with open(hmm_file, "r") as infile:
         lines = infile.readlines()
         for line in lines:
@@ -35,6 +36,7 @@ def process_hmm_results(hmm_file, genome_size, NCVOGs_list, weightdict):
 
 def main():
     parser = argparse.ArgumentParser(description='Calculate NVLDVs core genes index from hmmsearch results and genome size.')
+    parser.add_argument("-b", "--bin_id", required=True, help="The bin id")
     parser.add_argument('-f', '--fasta', type=str, help='Path to the fasta file')
     parser.add_argument('-t', '--hmm', type=str, help='Path to the hmmsearch results file (tblout)')
     parser.add_argument('-o', '--output', type=str, help='Path to the output TSV file')
@@ -48,7 +50,7 @@ def main():
     weightdict = dict(zip(NCVOGs_list, weight_list))
 
     genome_size = calculate_genome_size(args.fasta)
-    df = process_hmm_results(args.hmm, genome_size, NCVOGs_list, weightdict)
+    df = process_hmm_results(args.hmm, genome_size, NCVOGs_list, weightdict, args.bin_id)
 
     df.to_csv(args.output, index=False, sep='\t')
 

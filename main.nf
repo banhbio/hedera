@@ -103,10 +103,6 @@ workflow {
                                                         ncldv: it[2].readLines().last().split('\t').last().toFloat() > params.core_gene_index
                                                     }
                                                     .map{[it[0], it[1]]}.combine(prodigal.out.faa, by: 0)
-
-    classifier_result_list = classify_NCLDV_bin.out.map{it[2]}.toList()
-
-    summarize_NCVOG_results(classifier_result_list)
     /*02 finnished*/
 
     /*03 aasess putative NCLDV bins*/
@@ -147,12 +143,6 @@ workflow {
     detect_hallmark_genes_from_bin(
         detect_hallmark_genes_from_bin_ch
     )
-
-    hallmark_genes_detection_result_list = detect_hallmark_genes_from_bin.out.table.map{it[1]}.toList()
-    
-    summarize_detected_hallmark_genes(
-        hallmark_genes_detection_result_list
-    )
     /*03 finnished*/
 
     /*04 vaildate NCLDV bins*/
@@ -168,13 +158,6 @@ workflow {
                                                 }
                                                 .combine(putative_ncldv_bin_ch, by: 0)
                                                 .map{[it[0], it[2]]}
-
-
-    validated_ncldv_bin_result_list = validate_ncldv_bin.out.table.map{it[1]}.toList()
-    
-    summarize_ncldv_bin_validation(
-        validated_ncldv_bin_result_list
-    )
     /*04 finnished*/
 
     /*05 remove cellular contig */
@@ -210,12 +193,6 @@ workflow {
                                 }
                             .set {delineage}
 
-    delineage_candidate_finding_result = find_delineage_candidate.out.candidate.map{it[3]}.toList()
-
-    summarize_delineage_candidate_finding_result(
-        delineage_candidate_finding_result
-    )
-
     delineage_clean_bin_ch = delineage.clean.map{[it[0], it[1], it[2], it[4]]}
     
     /*
@@ -231,12 +208,6 @@ workflow {
 
     delineage_bin(
         delineage_input_ch
-    )
-
-    delineage_bin_result = delineage_bin.out.table.toList()
-
-    summarize_delineage_bin_result(
-        delineage_bin_result
     )
 
     postdelineage_input_ch = delineage_bin.out.bin.flatMap{
@@ -255,11 +226,27 @@ workflow {
     postdelineage(
         postdelineage_input_ch
     )
+    /*06 finnish */
 
+    /*07 seconde decontamination*/
     after_delineage_bin_ch = delineage_clean_bin_ch.mix(postdelineage.out.bin)
+                                                   .combine(summarize_assessment.out.summary, by:0)
 
     second_decontamination(
         after_delineage_bin_ch
+    )
+
+    /*07 finish*/
+
+    /*08 summary table */
+    table_ch = classify_NCLDV_bin.out.map{it[2]}.toList().map {["20NCVOG_weight.tsv" , it]}
+                .mix(detect_hallmark_genes_from_bin.out.table.map{it[1]}.toList().map {["hallmark_gene.tsv", it]})
+                .mix(validate_ncldv_bin.out.table.map{it[1]}.toList().map {["NCLDV_validation.tsv", it]})
+                .mix(find_delineage_candidate.out.candidate.map{it[3]}.toList().map {["delineage_candidate.tsv", it]})
+                .mix(delineage_bin.out.table.toList().map {["delineage_summary.tsv",it]})
+    
+    summarize_table(
+        table_ch
     )
 }
 
@@ -400,22 +387,7 @@ process classify_NCLDV_bin {
 
     script:
     """
-    python ${baseDir}/bin/classify_bin_20NCVOG.py -f ${bin} -t ${tblout} -n ${params.conserved_20_NCVOGs} -w ${params.conserved_20_NCVOG_weights} -o ${id}.20NCVOG_weight.tsv 
-    """
-}
-
-process summarize_NCVOG_results {
-    publishDir "${params.out}/detect_NCLDV/", mode: 'symlink'
-
-    input:
-    path("table/*")
-    
-    output:
-    path("20NCVOG_weight.tsv")
-
-    script:
-    """
-    python ${baseDir}/bin/summarize_table.py -i ./table -p .20NCVOG_weight.tsv -o 20NCVOG_weight.tsv
+    python ${baseDir}/bin/classify_bin_20NCVOG.py -b ${id} -f ${bin} -t ${tblout} -n ${params.conserved_20_NCVOGs} -w ${params.conserved_20_NCVOG_weights} -o ${id}.20NCVOG_weight.tsv 
     """
 }
 
@@ -526,22 +498,7 @@ process detect_hallmark_genes_from_bin {
     script:
     """
     echo "unchi"
-    python ${baseDir}/bin/detect_hallmark.py -f ${bin} -t ${tblout} -n ${params.hallmark_genes} -s ${params.hallmark_hmm_score_threshold}  -o ${id}.hallmark_total.tsv -O ${id}.hallmark_per_contigs.tsv
-    """
-}
-
-process summarize_detected_hallmark_genes {
-    publishDir "${params.out}/validate_NCLDV/hallmark", mode: 'symlink'
-
-    input:
-    path("table/*")
-    
-    output:
-    path("hallmark_genes.tsv")
-
-    script:
-    """
-    python ${baseDir}/bin/summarize_table.py -i ./table -p .hallmark_presense.tsv -o hallmark_genes.tsv
+    python ${baseDir}/bin/detect_hallmark.py -b ${id} -f ${bin} -t ${tblout} -n ${params.hallmark_genes} -s ${params.hallmark_hmm_score_threshold}  -o ${id}.hallmark_total.tsv -O ${id}.hallmark_per_contigs.tsv
     """
 }
 
@@ -554,27 +511,12 @@ process validate_ncldv_bin {
 
     script:
     """
-    python ${baseDir}/bin/validate_NCLDV_bin.py -a ${assessment_summary} -m ${hallmark_summary} -c ${params.hallmark_genes_for_validation} -o ${id}.NCLDV_validation.tsv
-    """
-}
-
-process summarize_ncldv_bin_validation {
-    publishDir "${params.out}/validate_NCLDV", mode: 'symlink'
-
-    input:
-    path("table/*")
-    
-    output:
-    path("NCLDV_validation.tsv")
-
-    script:
-    """
-    python ${baseDir}/bin/summarize_table.py -i ./table -p .NCLDV_validation.tsv -o NCLDV_validation.tsv
+    python ${baseDir}/bin/validate_NCLDV_bin.py -b ${id} -a ${assessment_summary} -m ${hallmark_summary} -c ${params.hallmark_genes_for_validation} -o ${id}.NCLDV_validation.tsv
     """
 }
 
 process remove_cellular_contig {
-    publishDir "${params.out}/decontamination/bins/fasta", mode: 'symlink'
+    publishDir "${params.out}/decontaminate_NCLDV/bins", mode: 'symlink'
 
     input:
     tuple val(id), path(bin), path(summary)
@@ -598,7 +540,8 @@ process find_delineage_candidate {
     script:
     """
     cat ${bin} | seqkit seq -ni | csvtk grep -t -f1 -P - ${depth} > ${id}.depth.txt
-    python ${baseDir}/bin/find_delineage_candidate.py -m ${hallmark_summary} -s ${params.hallmark_scgs} -d ${id}.depth.txt -o ${id}.delineage_candidate.tsv
+    sleep 10
+    python ${baseDir}/bin/find_delineage_candidate.py -b ${id} -m ${hallmark_summary} -s ${params.hallmark_scgs} -d ${id}.depth.txt -o ${id}.delineage_candidate.tsv
     """
 }
 
@@ -615,58 +558,31 @@ process count_tetramer {
     """
 }
 
-process summarize_delineage_candidate_finding_result {
-    publishDir "${params.out}/delineage_NCLDV", mode: 'symlink'
-
-    input:
-    path("table/*")
-    
-    output:
-    path("delineage_candidate.tsv")
-
-    script:
-    """
-    python ${baseDir}/bin/summarize_table.py -i ./table -p .delineage_candidate.tsv -o delineage_candidate.tsv
-    """
-}
-
 process delineage_bin {
+    publishDir "${params.out}/delineage_NCLDV/", pattern: "bins/*", mode: 'symlink'
+    publishDir "${params.out}/delineage_NCLDV/tree", pattern: "*.tree", mode: 'symlink'
+
     input:
     tuple val(id), path(bin), path(depth), path(tetramer), path(hallmark_summary), path(assessment)
 
     output:
-    tuple path("delineaged_bin/*"), path(depth), emit:'bin'
+    tuple path("bins/*"), path(depth), emit:'bin'
     path("${id}.tree"), emit:'tree'
     path("${id}.delineage_summary.tsv"), emit: 'table'
 
     script:
-    /* UNDER CONSTRUCTION */
     """
-    mkdir -p delineaged_bin
-    python ${baseDir}/bin/delineage.py -b ${id} -f ${bin} \
-                                        -t ${tetramer} \
-                                        -d ${depth} \
-                                        -m ${hallmark_summary} \
-                                        -n ${assessment} \
-                                        -s ${params.hallmark_scgs} \
-                                        -o delineaged_bin \
-                                        -O ${id}.tree \
-                                        -S ${id}.delineage_summary.tsv
-    """
-}
-
-process summarize_delineage_bin_result {
-    publishDir "${params.out}/delineage_NCLDV", mode: 'symlink'
-
-    input:
-    path("table/*")
-    
-    output:
-    path("delineage_summary.tsv")
-
-    script:
-    """
-    python ${baseDir}/bin/summarize_table.py -i ./table -p .delineage_summary.tsv -o delineage_summary.tsv
+    mkdir -p bins
+    python ${baseDir}/bin/delineage.py -b ${id} \
+                                       -f ${bin} \
+                                       -t ${tetramer} \
+                                       -d ${depth} \
+                                       -m ${hallmark_summary} \
+                                       -n ${assessment} \
+                                       -s ${params.hallmark_scgs} \
+                                       -o bins \
+                                       -O ${id}.tree \
+                                       -S ${id}.delineage_summary.tsv
     """
 }
 
@@ -686,16 +602,33 @@ process postdelineage {
 }
 
 process second_decontamination {
-    publishDir "${params.out}/final_NCLDV_MAG", mode: 'symlink'
+    publishDir "${params.out}/final_NCLDV_MAG", pattern: "*.fasta", mode: 'symlink'
+    publishDir "${params.out}/decontami_NCLDV_2nd", pattern: "*.tsv",  mode: 'symlink'
 
     input:
-    tuple val(id), path(bin), path(depth), path(tetramer)
+    tuple val(id), path(bin), path(depth), path(tetramer), path(assessment_summary)
 
     output:
     tuple val(id), path(bin), emit: 'MAG'
+    path("${id}.second_decontamination.tsv")
 
     script:
     """
-    python ${baseDir}/bin/second_decontamination.py -f ${bin} -c ${depth} -t ${tetramer} -o ${id}.mag.fasta
+    python ${baseDir}/bin/second_decontamination.py -f ${bin} -c ${depth} -t ${tetramer} -a ${assessment_summary} -d ${id}.second_decontamination.tsv -o ${id}.mag.fasta
+    """
+}
+
+process summarize_table {
+    publishDir "${params.out}/summary/", mode: 'symlink'
+
+    input:
+    tuple val(file), path("table/*")
+    
+    output:
+    path("${file}")
+
+    script:
+    """
+    csvtk concat table/* > ${file}
     """
 }
