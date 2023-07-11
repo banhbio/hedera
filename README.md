@@ -19,12 +19,18 @@ Original source code was provided by Ivy (Yue Fang).
 6. [x] assessment of GV characteristics of the contigs
 7. [x] discard nonNCLDV bins
 8. [x] remove cellular contigs
-9. [ ] delineage NCLDV bins
-10. [ ] further decontaminate NCLDV bins
+9. [x] delineage NCLDV bins (except CAT)
+10. [x] further decontaminate NCLDV bins
+
 
 
 ## Concern
 I donot care any licences yet (hmms and modefied viralrecall scripts etc.).
 ~~At least, hmm file should be replaced by us.~~
 The original sources of the hmm files were confirmed.
+
 Please make sure before this page become public.
+
+This pipeline makes a lot of intermediate files.
+CAT is so slow.
+In CAT, pithovirus is not included in Nucleocytoviricota.
