@@ -172,7 +172,7 @@ def main():
 
     if len(processed_sequence_list) == 1:
         new_seq = processed_sequence_list[0]
-        SeqIO.write(new_seq, f"{args.output}/{args.bin_id}.delineaged.fasta", "fasta")
+        SeqIO.write(new_seq, f"{args.output}/{args.bin_id}_mscg.delineaged.fasta", "fasta")
     else:
         for i, new_seq in enumerate(processed_sequence_list):
             SeqIO.write(new_seq, f"{args.output}/{args.bin_id}_{i+1}.delineaged.fasta", "fasta")
