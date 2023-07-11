@@ -244,7 +244,7 @@ workflow {
                 .mix(detect_hallmark_genes_from_bin.out.table.map{it[1]}.toList().map {["hallmark_gene.tsv", it]})
                 .mix(validate_ncldv_bin.out.table.map{it[1]}.toList().map {["NCLDV_validation.tsv", it]})
                 .mix(find_delineage_candidate.out.candidate.map{it[3]}.toList().map {["delineage_candidate.tsv", it]})
-                .mix(delineage_bin.out.table.toList().map {["delineage_summary.tsv",it]})
+                .mix(delineage_bin.out.table.toList().map {["delineage_summary.tsv", it]})
     
     summarize_table(
         table_ch
@@ -555,7 +555,7 @@ process count_tetramer {
 
     script:
     """
-    cat ${bin} | cgat fasta2kmercontent -k 4 -p | grep -v "^#" > ${id}.tetramer.tsv
+    cat ${bin} | seqkit replace -p "\s.+" | cgat fasta2kmercontent -k 4 -p | grep -v "^#" > ${id}.tetramer.tsv
     """
 }
 
@@ -597,7 +597,7 @@ process postdelineage {
     script:
     id = bin.getSimpleName()
     """
-    cat ${bin} | cgat fasta2kmercontent -k 4 -p | grep -v "^#" > ${id}.tetramer.tsv
+    cat ${bin} | seqkit replace -p "\s.+" | cgat fasta2kmercontent -k 4 -p | grep -v "^#" > ${id}.tetramer.tsv
     cat ${bin} | seqkit seq -ni | csvtk grep -t -f1 -P - ${depth} > ${id}.depth.txt
     cat ${bin} | seqkit seq -ni | csvtk grep -t -f1 -P - ${assessment} > ${id}.NCLDV_assessment.txt
     """
@@ -611,8 +611,8 @@ process second_decontamination {
     tuple val(id), path(bin), path(depth), path(tetramer), path(assessment_summary)
 
     output:
-    tuple val(id), path(bin), emit: 'MAG'
-    path("${id}.second_decontamination.tsv")
+    tuple val(id), path(bin), emit:'MAG'
+    path("${id}.second_decontamination.tsv"), emit:'table'
 
     script:
     """
