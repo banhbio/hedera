@@ -221,16 +221,17 @@ workflow {
                                                         }   
                                                     }
 
-    postdelineage_input_ch.view()
-
     postdelineage(
         postdelineage_input_ch
     )
+
     /*06 finnish */
 
     /*07 seconde decontamination*/
-    after_delineage_bin_ch = delineage_clean_bin_ch.mix(postdelineage.out.bin)
-                                                   .combine(summarize_assessment.out.summary, by:0)
+    after_delineage_bin_ch = delineage_clean_bin_ch.combine(summarize_assessment.out.summary, by:0)
+                                                   .mix(postdelineage.out.bin)
+
+    after_delineage_bin_ch.view()
 
     second_decontamination(
         after_delineage_bin_ch
@@ -539,8 +540,8 @@ process find_delineage_candidate {
 
     script:
     """
+    echo "hogehogehoge"
     cat ${bin} | seqkit seq -ni | csvtk grep -t -f1 -P - ${depth} > ${id}.depth.txt
-    sleep 10
     python ${baseDir}/bin/find_delineage_candidate.py -b ${id} -m ${hallmark_summary} -s ${params.hallmark_scgs} -d ${id}.depth.txt -o ${id}.delineage_candidate.tsv
     """
 }
@@ -566,7 +567,7 @@ process delineage_bin {
     tuple val(id), path(bin), path(depth), path(tetramer), path(hallmark_summary), path(assessment)
 
     output:
-    tuple path("bins/*"), path(depth), emit:'bin'
+    tuple path("bins/*"), path(depth), path(assessment),  emit:'bin'
     path("${id}.tree"), emit:'tree'
     path("${id}.delineage_summary.tsv"), emit: 'table'
 
@@ -588,16 +589,17 @@ process delineage_bin {
 
 process postdelineage {
     input:
-    tuple path(bin), path(depth)
+    tuple path(bin), path(depth), path(assessment)
 
     output:
-    tuple val(id), path(bin), path("${id}.depth.txt"), path("${id}.tetramer.tsv"), emit:'bin'
+    tuple val(id), path(bin), path("${id}.depth.txt"), path("${id}.tetramer.tsv"), path("${id}.NCLDV_assessment.txt"), emit:'bin'
 
     script:
     id = bin.getSimpleName()
     """
     cat ${bin} | cgat fasta2kmercontent -k 4 -p | grep -v "^#" > ${id}.tetramer.tsv
     cat ${bin} | seqkit seq -ni | csvtk grep -t -f1 -P - ${depth} > ${id}.depth.txt
+    cat ${bin} | seqkit seq -ni | csvtk grep -t -f1 -P - ${assessment} > ${id}.NCLDV_assessment.txt
     """
 }
 
@@ -629,6 +631,6 @@ process summarize_table {
 
     script:
     """
-    csvtk concat table/* > ${file}
+    csvtk concat -t table/* > ${file}
     """
 }
