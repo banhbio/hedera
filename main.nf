@@ -214,7 +214,7 @@ workflow {
                                                     item ->
                                                         /* check if the delineaged output is a list */
                                                         if (item[0] instanceof List) {
-                                                            item[0].collect {bin -> [bin, item[1]]}
+                                                            item[0].collect {bin -> [bin, item.tail()].flatten()}
                                                         }else{
                                                             // If the bin is single, return the item
                                                             [item]
