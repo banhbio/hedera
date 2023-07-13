@@ -48,27 +48,37 @@ log.info"""
 
 workflow {
     /*01 assembly and binning*/
-                                
-    read_ch = Channel.fromFilePairs("${params.rawread_dir}/*_{1,2}.fastq.gz", flat:true)
+    read_ch = Channel.fromFilePairs(params.input_reads, flat:true)
 
-    fastp(
-        read_ch
-    )
+    if(!params.after_qc){
+        fastp(
+            read_ch
+        )
+        qc_read_ch = fastp.out.read
+    }else{
+        qc_read_ch = read_ch
+    }
 
-    megahit(
-        fastp.out.read
-    )
+    if(!params.from_contig){
+        megahit(
+            qc_read_ch
+        )
+        contig_ch = megahit.out.contig
+    }else{
+        contig_ch = Channel.fromPath(params.input_contigs)
+                           .map{[it.getSimpleName(), it]}
+    }
     
-    forward_reads_list = fastp.out.read.map{it[1]}.toList()
-    backward_reads_list = fastp.out.read.map{it[2]}.toList()
+    forward_reads_list = qc_read_ch.map{it[1]}.toList()
+    backward_reads_list = qc_read_ch.map{it[2]}.toList()
 
     coverm(
-        megahit.out.contig,
+        contig_ch,
         forward_reads_list,
         backward_reads_list
     )
 
-    metabat2_input_ch =  megahit.out.contig.combine(coverm.out.bam, by: 0)
+    metabat2_input_ch =  contig_ch.combine(coverm.out.bam, by: 0)
 
     metabat2(
         metabat2_input_ch
