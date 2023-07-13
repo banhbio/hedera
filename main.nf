@@ -88,7 +88,7 @@ workflow {
     /*02 detect putative NCLDV bins*/
 
     /* collect all bins */
-    bin_ch = metabat2.out.bins.flatten()
+    bin_ch = metabat2.out.bins.flatten().mix(metabat2.out.single_contig.flatten())
 
     rename_bin(
         bin_ch
@@ -326,19 +326,27 @@ process coverm {
 }
 
 process metabat2 {
-    publishDir "${params.out}/binning/metabat2", mode: 'symlink'
+    publishDir "${params.out}/binning/metabat2", pattern: "*_metabat2bin/*", mode: 'symlink'
+    publishDir "${params.out}/binning/metabat2", pattern: "*_metabat2sc/*", mode: 'symlink'
+    publishDir "${params.out}/binning/depth", pattern: "*.depth.txt", mode: 'symlink'
 
     input:
     tuple val(id), path(contig), path("bam/*")
 
     output:
-    path("${id}.metabat2bin/*"), emit: 'bins'
+    path("${id}_metabat2bin/*"), emit: 'bins'
+    path("${id}_metabat2sc/*"), emit: 'single_contig'
     tuple val(id), path("${id}.depth.txt"), emit: 'depth'
 
     script:
     """
     jgi_summarize_bam_contig_depths --outputDepth ${id}.depth.txt bam/*.bam
-    metabat2 -i ${contig} -a ${id}.depth.txt -v -o ${id}.metabat2bin/${id}.metabat2bin
+    metabat2 -i ${contig} -a ${id}.depth.txt -v -o ${id}_metabat2bin/${id}_metabat2bin
+    cat ${id}_metabat2bin/* | seqkit seq -ni | seqkit grep -v -f - ${contig} | seqkit replace -p "\s.+" | seqkit seq -m ${params.leftover_length} > ${id}_metabat2sc.fasta
+    mkdir ${id}_metabat2sc
+    seqkit split -s 1 -O tmp ${id}_metabat2sc.fasta
+    for old in tmp/*; do base=\$(basename \$old); suffix=\${base#*.}; number_fasta=\$(echo \$suffix | cut -d'_' -f 2 | sed 's/^0*//'); mv "\$old" ${id}_metabat2sc/${id}_metabat2sc."\${number_fasta}"; done
+    rm -rf tmp
     """
 }
 
