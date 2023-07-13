@@ -7,43 +7,123 @@ nextflow.enable.dsl=2
 
 version = 'wip-0.1'
 
-params.help = false
-params.resume = false
-params.cpu = 1
-params.out="$baseDir/out"
+log.info """
+hedera: This is a pipleline to assemble and binning NCLDV MAGs from metagenomic data.
+version:${version}
+"""
 
 if (params.help) {
     log.info """
-    hedera: This is a pipleline to assemble and binning NCLDV MAGs from metagenomic data.
-    version ${version}
+    /* help messeage */
+    """
+    exit 0
+}
+
+/* utils */
+def createTable(String items1, String items2, String column1Name, String column2Name) {
+    // Split the input strings into lists
+    def itemList1 = items1.split(",")
+    def itemList2 = items2.split(",")
+
+    // Check if the sizes of the lists match
+    if(itemList1.size() != itemList2.size()) {
+        throw new IllegalArgumentException("The size of both item lists must be the same.")
+    }
+
+    // Find the longest length of the strings in the lists
+    def maxColumn1Length = itemList1.collect { it.length() }.max().compareTo(column1Name.length()) > 0 ? itemList1.collect { it.length() }.max() : column1Name.length()
+    def maxColumn2Length = itemList2.collect { it.length() }.max().compareTo(column2Name.length()) > 0 ? itemList2.collect { it.length() }.max() : column2Name.length()
+
+    // Make the table header
+    String table = "| ${column1Name.padRight(maxColumn1Length)} | ${column2Name.padRight(maxColumn2Length)} |\n" 
+    table += "| ${"-".multiply(maxColumn1Length)} | ${"-".multiply(maxColumn2Length)} |\n"
+
+    // Create each row
+    for(int i = 0; i < itemList1.size(); i++) {
+        table += "| ${itemList1[i].padRight(maxColumn1Length)} | ${itemList2[i].padRight(maxColumn2Length)} |\n"
+    }
+
+    return table
+}
+
+NCVOG_table = createTable(params.conserved_20_NCVOGs, params.conserved_20_NCVOG_weights, "NCVOG", "Weight")
+hallmark_gene_table = createTable(params.hallmark_genes, params.hallmark_hmm_score_threshold, "Hallmark gene", "Score threshold")
+
+/* Print Infomation */
+log.info"""
+General parameters in this run:
+"""
+
+if(params.after_qc){
+    log.info"""
+        --after_qc : true
+            Input reads are treated as quality-checked (e.g., with fastp, trimmomatic, etc.).
     """
 }
 
-
-/* coregene settings */
-params.conserved_20_NCVOG_hmm="$baseDir/data/hmm/NCVOG/conserved_20_NCVOG.hmm"
-params.conserved_20_NCVOGs="NCVOG0022,NCVOG0023,NCVOG0037,NCVOG0038,NCVOG0052,NCVOG0076,NCVOG0236,NCVOG0249,NCVOG0261,NCVOG0262,NCVOG0271,NCVOG0272,NCVOG0273,NCVOG0274,NCVOG0276,NCVOG1060,NCVOG1117,NCVOG1127,NCVOG1164,NCVOG1353"
-params.conserved_20_NCVOG_weights="0.9,1.1,0.5,1.1,0.9,1,0.8,1,0.7,1,0.9,1,0.8,0.9,0.8,0.6,0.7,0.4,1,0.8"
-params.core_gene_index=5.75
-
-/* QC settings */
-params.virsorter_groups="dsDNAphage,NCLDV,RNA,ssDNA,lavidaviridae"
-params.CAT_DB="$baseDir/data/CAT/CAT_prepare_20210107/2021-01-07_CAT_database"
-params.CAT_Taxonomy="$baseDir/data/CAT/CAT_prepare_20210107/2021-01-07_taxonomy"
-params.additional_NCLDV_149_hmm="$baseDir/data/hmm/NCLDV_149/NCLDV_149.hmm"
-
-params.hallmark_hmm="$baseDir/data/hmm/hallmark/hallmark.hmm"
-params.hallmark_genes="DNApolB,MCP_NCLDVs,pATPase_all,Primase_all,RNAP-a_all,RNAP-b_all,TFIIS,VLTF3"
-params.hallmark_hmm_score_threshold="150,80,80,80,200,200,100,80"
-
-/* validation settings */
-params.hallmark_genes_for_validation="DNApolB,MCP_NCLDVs,pATPase_all,TFIIS,VLTF3"
-
-/* delineage settings */
-params.hallmark_scgs="DNApolB,pATPase_all,TFIIS,VLTF3"
+if(params.from_contig){
+    log.info"""
+        --from_contig : true
+            The assembly step will skipped. Please ensure --input_contigs is not left empty.
+    """
+    if(params.input_contigs.isEmpty()){
+            log.info""
+            exit 1, "Oops! --input_contigs is empty."
+    }
+}
 
 log.info"""
+    Input reads  : ${params.input_reads}
 """
+
+if(!params.after_qc){
+    log.info"""
+    Quality check settings:
+        fastp parameter : ${params.fastp_parameter} 
+    """
+}
+
+if(params.from_contig){
+    log.info"""
+    Input contigs: ${params.input_contigs}
+    """
+}else{
+    log.info"""
+    Assembly settings:
+        Memory per machine' total : ${params.assembly_memory_per_machine}
+        MEGAHIT kmer parameter    : ${params.assembly_kmer}
+        Minimun contig length     : ${params.assembly_min_contig_len}
+    """
+}
+
+log.info"""
+    Binnig settings:
+        Minimum contig length resucued from binning leftovers: ${params.leftover_length}
+    
+    Detect NCLDV bin settings:
+        Core gene (20 NCVOG) hmms : ${params.conserved_20_NCVOG_hmm}
+        Core gene index           : ${params.core_gene_index}
+        Weights of NCVOGs         :
+
+${NCVOG_table.split('\n').collect { '       ' + it }.join('\n')}
+    
+    Assessment NCLDV bin settings:
+        Virsoter groups             : ${params.virsorter_groups}
+        CAT DB                      : ${params.CAT_DB}
+        CAT Taxonomy                : ${params.CAT_Taxonomy}
+        Additional 149 hmms         : ${params.additional_NCLDV_149_hmm} 
+        Additional 149 hmms e-value : ${params.additional_NCLDV_149_hmm_evalue} 
+        NCLDV hallmark genes        :
+
+${hallmark_gene_table.split('\n').collect { '       ' + it }.join('\n')}
+
+    Validate NCLDV bin settings:
+        NCLDV hallmark genes : ${params.hallmark_genes_for_validation}
+
+    Delineage NCLDV bin settings:
+        NCLDV single copy genes : ${params.hallmark_scgs}
+"""
+
 
 
 workflow {
@@ -261,33 +341,27 @@ workflow {
     )
 }
 
-/*
-WIP: fastp
-WIP: -3 -W 6 -M 30 -q 20 -u 50 -n 0 -p -l 50
-*/
 process fastp {
-    publishDir "${params.out}/binning/fastp", mode: 'symlink'
+    publishDir "${params.out}/binning/fastp/fastq", pattern: '*.fastq.gz', mode: 'symlink'
+    publishDir "${params.out}/binning/fastp/html", pattern: '*.html', mode: 'symlink'
+    publishDir "${params.out}/binning/fastp/json", pattern: '*.json', mode: 'symlink'
 
     input:
-    tuple val(id), path("seq1.fq.gz"), path("seq2.fq.gz")
+    tuple val(id), path("seq1.fastq.gz"), path("seq2.fastq.gz")
 
     output:
-    tuple val("${id}"), path("${id}_forward_qcd.fq.gz"), path("${id}_backward_qcd.fq.gz"), emit: 'read'
+    tuple val("${id}"), path("${id}_qcd_1.fastq.gz"), path("${id}_qcd_2.fastq.gz"), emit: 'read'
     path("${id}_fastp_report.html")
     path("${id}_fastp_report.json")
 
     script:
     """
-    fastp -i seq1.fq.gz -I seq2.fq.gz -o ${id}_forward_qcd.fq.gz -O ${id}_backward_qcd.fq.gz -w ${task.cpus} -h ${id}_fastp_report.html -j ${id}_fastp_report.json -3 -W 6 -M 30 -q 20 -u 50 -n 0 -p -l 50
+    fastp -i seq1.fastq.gz -I seq2.fastq.gz -o ${id}_qcd_1.fastq.gz -O ${id}_qcd_2.fastq.gz -w ${task.cpus} -h ${id}_fastp_report.html -j ${id}_fastp_report.json ${params.fastp_parameter}
     """
 }
 
 /*
-what megahit kmer is usualy used?
-WIP: --k-min 21 --k-max 141
-
-Filter out contigs shorter than 2500nt
-Then rename contig header by run id
+rename contig header by run id
 */
 process megahit {
     publishDir "${params.out}/binning/assembly", mode: 'symlink'
@@ -301,14 +375,11 @@ process megahit {
     script:
     mem = (task.memory =~ /(\d+).GB/)[0][1] 
     """
-    megahit -1 ${forward} -2 ${backward} -m 0.3 --k-min 21 --k-max 141 --k-step 12 -t ${task.cpus} -o megahit --out-prefix ${id}.megahit --min-contig-len 2500
+    megahit -1 ${forward} -2 ${backward} -m ${params.assembly_memory_per_machine}  -t ${task.cpus} -o megahit --out-prefix ${id}.megahit ${params.assembly_kmer} --min-contig-len ${params.assembly_min_contig_len}
     seqkit replace -p '^' -r '${id}_' megahit/${id}.megahit.contigs.fa > ${id}.megahit.rename.contigs.fa
     """
 }
 
-/*
-replaced bowtie2 and samtools with coverM, because it's simpler
-*/
 process coverm {
     publishDir "${params.out}/binning/coverm", mode: 'symlink'
     input:
@@ -366,7 +437,6 @@ process rename_bin {
     """
 }
 
-/* replace with prodigal-gv? */
 process prodigal {
     publishDir "${params.out}/binning/bins/prodigal", mode: 'symlink'
 
@@ -458,9 +528,6 @@ process CAT {
     """
 }
 
-/* Is it correct threshold? */
-/* the ivy's docs said 1e-10 */
-/* original code said 1e-50 */
 process hmmsearch_with_NCLDV_149_hmm {
     publishDir "${params.out}/validate_NCLDV/assessment/NCLDV_149_hmm", mode: 'symlink'
 
@@ -472,7 +539,7 @@ process hmmsearch_with_NCLDV_149_hmm {
 
     script:
     """
-    hmmsearch --tblout ${id}.149_hmm.tblout --notextw -E 1e-50 --cpu ${task.cpus} ${params.additional_NCLDV_149_hmm} ${faa}
+    hmmsearch --tblout ${id}.149_hmm.tblout --notextw -E ${params.additional_NCLDV_149_hmm_evalue} --cpu ${task.cpus} ${params.additional_NCLDV_149_hmm} ${faa}
     """
 }
 
@@ -545,7 +612,7 @@ process remove_cellular_contig {
 
     script:
     """
-    cat ${summary} | awk -F '\t' 'NR>2 && \$6 != 0 {print \$1}' | seqkit grep -f - ${bin} > ${id}.decontaminated.fasta
+    cat ${summary} | awk -F '\t' 'NR>1 && \$6 != 0 {print \$1}' | seqkit grep -f - ${bin} > ${id}.decontaminated.fasta
     """
 }
 
@@ -623,7 +690,7 @@ process postdelineage {
 
 process second_decontamination {
     publishDir "${params.out}/final_NCLDV_MAG", pattern: "*.fasta", mode: 'symlink'
-    publishDir "${params.out}/decontami_NCLDV_2nd", pattern: "*.tsv",  mode: 'symlink'
+    publishDir "${params.out}/decontami_NCLDV_2nd/summary", pattern: "*.tsv",  mode: 'symlink'
 
     input:
     tuple val(id), path(bin), path(depth), path(tetramer), path(assessment_summary)
