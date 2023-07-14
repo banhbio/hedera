@@ -412,7 +412,7 @@ process metabat2 {
     script:
     """
     jgi_summarize_bam_contig_depths --outputDepth ${id}.depth.txt bam/*.bam
-    metabat2 -i ${contig} -a ${id}.depth.txt -v -o ${id}_metabat2bin/${id}_metabat2bin
+    metabat2 -i ${contig} -a ${id}.depth.txt -t ${task.cpus} -v -o ${id}_metabat2bin/${id}_metabat2bin
     cat ${id}_metabat2bin/* | seqkit seq -ni | seqkit grep -v -f - ${contig} | seqkit replace -p "\s.+" | seqkit seq -m ${params.leftover_length} > ${id}_metabat2sc.fasta
     mkdir ${id}_metabat2sc
     seqkit split -s 1 -O tmp ${id}_metabat2sc.fasta
