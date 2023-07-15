@@ -581,7 +581,6 @@ process detect_hallmark_genes_from_bin {
 
     script:
     """
-    echo "unchi"
     python ${baseDir}/bin/detect_hallmark.py -b ${id} -f ${bin} -t ${tblout} -n ${params.hallmark_genes} -s ${params.hallmark_hmm_score_threshold}  -o ${id}.hallmark_total.tsv -O ${id}.hallmark_per_contigs.tsv
     """
 }
