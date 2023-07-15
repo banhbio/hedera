@@ -610,7 +610,7 @@ process remove_cellular_contig {
 
     script:
     """
-    cat ${summary} | awk -F '\t' 'NR>1 && \$6 != 0 {print \$1}' | seqkit grep -f - ${bin} > ${id}.decontaminated.fasta
+    cat ${summary} | csvtk filter -f "NCLDV_score>0" | sed '1d' | cut -f1 | seqkit grep -f - ${bin} > ${id}.decontaminated.fasta
     """
 }
 
