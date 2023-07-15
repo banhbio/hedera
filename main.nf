@@ -91,7 +91,7 @@ if(params.from_contig){
     log.info"""
     Assembly settings:
         Memory per machine' total : ${params.assembly_memory_per_machine}
-        MEGAHIT kmer parameter    : ${params.assembly_kmer}
+        Kmer parameter    : ${params.assembly_kmer}
         Minimun contig length     : ${params.assembly_min_contig_len}
     """
 }
@@ -320,8 +320,6 @@ workflow {
     /*07 seconde decontamination*/
     after_delineage_bin_ch = delineage_clean_bin_ch.combine(summarize_assessment.out.summary, by:0)
                                                    .mix(postdelineage.out.bin)
-
-    after_delineage_bin_ch.view()
 
     second_decontamination(
         after_delineage_bin_ch
@@ -625,7 +623,6 @@ process find_delineage_candidate {
 
     script:
     """
-    echo "hogehogehoge"
     cat ${bin} | seqkit seq -ni | csvtk grep -t -f1 -P - ${depth} > ${id}.depth.txt
     python ${baseDir}/bin/find_delineage_candidate.py -b ${id} -m ${hallmark_summary} -s ${params.hallmark_scgs} -d ${id}.depth.txt -o ${id}.delineage_candidate.tsv
     """
@@ -690,7 +687,7 @@ process postdelineage {
 
 process second_decontamination {
     publishDir "${params.out}/final_NCLDV_MAG", pattern: "*.fasta", mode: 'symlink'
-    publishDir "${params.out}/decontami_NCLDV_2nd/summary", pattern: "*.tsv",  mode: 'symlink'
+    publishDir "${params.out}/decontamination_NCLDV_2nd/summary", pattern: "*.tsv",  mode: 'symlink'
 
     input:
     tuple val(id), path(bin), path(depth), path(tetramer), path(assessment_summary)
