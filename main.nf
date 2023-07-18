@@ -109,8 +109,6 @@ ${NCVOG_table.split('\n').collect { '       ' + it }.join('\n')}
     
     Assessment NCLDV bin settings:
         Virsoter groups             : ${params.virsorter_groups}
-        CAT DB                      : ${params.CAT_DB}
-        CAT Taxonomy                : ${params.CAT_Taxonomy}
         Additional 149 hmms         : ${params.additional_NCLDV_149_hmm} 
         Additional 149 hmms e-value : ${params.additional_NCLDV_149_hmm_evalue} 
         NCLDV hallmark genes        :
@@ -207,17 +205,12 @@ workflow {
         putative_ncldv_bin_ch
     )
 
-    CAT(
-        putative_ncldv_bin_ch
-    )
-
     hmmsearch_with_NCLDV_149_hmm(
         putative_ncldv_prot_ch
     )
 
     assessment_results_ch = putative_ncldv_bin_ch.combine(viralrecall.out.tsv, by: 0)
                                                  .combine(virsorter2.out.tsv, by: 0)
-                                                 .combine(CAT.out.txt, by: 0)
                                                  .combine(hmmsearch_with_NCLDV_149_hmm.out.tblout, by: 0)
 
     summarize_assessment(
@@ -290,7 +283,6 @@ workflow {
                                            2) depth of contigs in bin (depth.txt).
                                            3) tetra nucleotide frequency.
                                            3) NCLDV score of contigs in bin (summary.tsv).
-                                           4) Taxonomic annotation of contigs in bin (CAT.txt).
     */
     delineage_input_ch = delineage.candidate.map{[it[0], it[1], it[2], it[4]]}
                                         .combine(detect_hallmark_genes_from_bin.out.table_per_contig, by: 0)
@@ -510,22 +502,6 @@ process virsorter2 {
     """
 }
 
-process CAT {
-    publishDir "${params.out}/validate_NCLDV/assessment/CAT", mode: 'symlink'
-
-    input:
-    tuple val(id), path(bin)
-    
-    output:
-    tuple val(id), path("${id}.CAT_annotation.txt"), emit:'txt'
-
-    script:
-    """
-    CAT contigs -c ${bin} -o ${id} -d ${params.CAT_DB} -t ${params.CAT_Taxonomy} -n ${task.cpus}
-    CAT add_names -i ${id}.contig2classification.txt -o ${id}.CAT_annotation.txt -t ${params.CAT_Taxonomy}
-    """
-}
-
 process hmmsearch_with_NCLDV_149_hmm {
     publishDir "${params.out}/validate_NCLDV/assessment/NCLDV_149_hmm", mode: 'symlink'
 
@@ -545,14 +521,14 @@ process summarize_assessment {
     publishDir "${params.out}/validate_NCLDV/assessment/summary", mode: 'symlink'
 
     input:
-    tuple val(id), path(bin), path(viralrecall), path(virsorter2), path(CAT), path(tblout)
+    tuple val(id), path(bin), path(viralrecall), path(virsorter2), path(tblout)
     
     output:
     tuple val(id), path("${id}.NCLDV_assessment.tsv"), emit:'summary'
 
     script:
     """
-    python ${baseDir}/bin/summarize_assessment_results.py -f ${bin} -r ${viralrecall} -s ${virsorter2} -c ${CAT} -n ${tblout} -o ${id}.NCLDV_assessment.tsv
+    python ${baseDir}/bin/summarize_assessment_results.py -f ${bin} -r ${viralrecall} -s ${virsorter2} -n ${tblout} -o ${id}.NCLDV_assessment.tsv
     """
 }
 

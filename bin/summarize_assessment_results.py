@@ -4,15 +4,14 @@ from Bio import SeqIO
 import pandas as pd
 import numpy as np
 
-def process_results(contigid_list, viralrecall, virsorter2, cat, ncldvogs):
+def process_results(contigid_list, viralrecall, virsorter2, ncldvogs):
     # Create DataFrame with specified column names
-    df = pd.DataFrame(columns=["ID","viralrecall","virsorter2","cat","149ncldvogs"])
+    df = pd.DataFrame(columns=["ID","viralrecall","virsorter2","149ncldvogs"])
 
     # Set 'ID' column as contigid_list and initialize all other columns with 0
     df['ID'] = contigid_list
     df['viralrecall'] = 0
     df['virsorter2'] = 0
-    df['cat'] = 0
     df['149ncldvogs'] = 0
 
     # Process the viralrecall result file
@@ -35,19 +34,6 @@ def process_results(contigid_list, viralrecall, virsorter2, cat, ncldvogs):
             if classification == 'NCLDV':
                 df.loc[df['ID'] == contig_id, 'virsorter2'] = 1
 
-    # Process the CAT result file
-    with open(cat, 'r') as cat_file:
-        next(cat_file)  # Skip header
-        for line in cat_file:
-            fields = line.strip().split('\t')
-            if len(fields) >= 10:  # Ensure the 10th field exists
-                contig_id = fields[0]
-                value_field = fields[9]
-                A, BC = value_field.split(' (') # A (B): C
-                B, C = BC.split('): ')
-                if A == 'Nucleocytoviricota' and float(C) > 0.50:
-                    df.loc[df['ID'] == contig_id, 'cat'] = 1
-
     # Process the ncldvogs result file
     with open(ncldvogs, 'r') as n_file:
         for line in n_file:
@@ -67,14 +53,13 @@ def main():
     parser.add_argument('-f', '--fasta', required=True, type=str, help='Path to the fasta file')
     parser.add_argument('-r', '--viralrecall', required=True, type=str, help='Path to the vuralrecall result file')
     parser.add_argument('-s', '--virsorter2', required=True, type=str, help='Path to the virsorter2 result file')
-    parser.add_argument('-c', '--cat', required=True, type=str, help='Path to the CAT result file')
     parser.add_argument('-n', '--ncldvogs', required=True, type=str, help='Path to the 149 NCLDVOGs hmmsearch results file (tblout)')
     parser.add_argument('-o', '--output', required=True, type=str, help='Path to the output file')
 
     args = parser.parse_args()
 
     contigid_list = [record.id for record in SeqIO.parse(args.fasta, "fasta")]
-    df = process_results(contigid_list, args.viralrecall, args.virsorter2, args.cat, args.ncldvogs)
+    df = process_results(contigid_list, args.viralrecall, args.virsorter2, args.ncldvogs)
 
     df.to_csv(args.output, index=False, sep='\t')
 
