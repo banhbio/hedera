@@ -127,7 +127,7 @@ ${hallmark_gene_table.split('\n').collect { '       ' + it }.join('\n')}
 
 
 workflow {
-    /*01 assembly and binning*/
+    /*01 quality control of reads*/
     read_ch = Channel.fromFilePairs(params.input_reads, flat:true)
 
     if(!params.after_qc){
@@ -138,7 +138,9 @@ workflow {
     }else{
         qc_read_ch = read_ch
     }
+    /*01 finnish*/
 
+    /*02 assembly*/
     if(!params.from_contig){
         megahit(
             qc_read_ch
@@ -148,7 +150,9 @@ workflow {
         contig_ch = Channel.fromPath(params.input_contigs)
                            .map{[it.getSimpleName(), it]}
     }
-    
+    /*02 finnish*/
+
+    /*03 binnning*/
     forward_reads_list = qc_read_ch.map{it[1]}.toList()
     backward_reads_list = qc_read_ch.map{it[2]}.toList()
 
@@ -163,9 +167,9 @@ workflow {
     metabat2(
         metabat2_input_ch
     )
-    /*01 finnished*/
+    /*03 finnish*/
 
-    /*02 detect putative NCLDV bins*/
+    /*04 filter putative NCLDV bins*/
 
     /* collect all bins */
     bin_ch = metabat2.out.bins.flatten().mix(metabat2.out.single_contig.flatten())
@@ -193,9 +197,9 @@ workflow {
                                                         ncldv: it[2].readLines().last().split('\t').last().toFloat() > params.core_gene_index
                                                     }
                                                     .map{[it[0], it[1]]}.combine(prodigal.out.faa, by: 0)
-    /*02 finnished*/
+    /*04 finnish*/
 
-    /*03 aasess putative NCLDV bins*/
+    /*05 validate putative NCLDV bins*/
     putative_ncldv_bin_ch = putative_ncldv_bin_and_prot_ch.map{[it[0], it[1]]}
     putative_ncldv_prot_ch = putative_ncldv_bin_and_prot_ch.map{[it[0], it[2]]}
 
@@ -233,9 +237,7 @@ workflow {
     detect_hallmark_genes_from_bin(
         detect_hallmark_genes_from_bin_ch
     )
-    /*03 finnished*/
 
-    /*04 vaildate NCLDV bins*/
     validate_ncldv_bin_input_ch = summarize_assessment.out.summary.combine(detect_hallmark_genes_from_bin.out.table, by: 0)
 
     validate_ncldv_bin(
@@ -248,17 +250,17 @@ workflow {
                                                 }
                                                 .combine(putative_ncldv_bin_ch, by: 0)
                                                 .map{[it[0], it[2]]}
-    /*04 finnished*/
+    /*05 finnish*/
 
-    /*05 remove cellular contig */
+    /*06 decontaminate cellular contig */
     remove_cellular_contig_input_ch = validated_ncldv_bin_ch.combine(summarize_assessment.out.summary, by: 0)
 
     remove_cellular_contig(
         remove_cellular_contig_input_ch
     )
-    /*05 finnished*/
+    /*06 finnish*/
 
-    /*06 delineage NCLDV bin*/
+    /*07 delineage NCLDV bin*/
 
     delineage_candidate_input_ch = remove_cellular_contig.out.bin
                                                         .combine(detect_hallmark_genes_from_bin.out.table_per_contig, by: 0)
@@ -315,9 +317,9 @@ workflow {
         postdelineage_input_ch
     )
 
-    /*06 finnish */
+    /*07 finnish */
 
-    /*07 seconde decontamination*/
+    /*08 seconde decontamination*/
     after_delineage_bin_ch = delineage_clean_bin_ch.combine(summarize_assessment.out.summary, by:0)
                                                    .mix(postdelineage.out.bin)
 
@@ -325,24 +327,25 @@ workflow {
         after_delineage_bin_ch
     )
 
-    /*07 finish*/
+    /*08 finish*/
 
-    /*08 summary table */
-    table_ch = classify_NCLDV_bin.out.map{it[2]}.toList().map {["20NCVOG_weight.tsv" , it]}
-                .mix(detect_hallmark_genes_from_bin.out.table.map{it[1]}.toList().map {["hallmark_gene.tsv", it]})
-                .mix(validate_ncldv_bin.out.table.map{it[1]}.toList().map {["NCLDV_validation.tsv", it]})
-                .mix(find_delineage_candidate.out.candidate.map{it[3]}.toList().map {["delineage_candidate.tsv", it]})
-                .mix(delineage_bin.out.table.toList().map {["delineage_summary.tsv", it]})
+    /*09 summary table */
+    table_ch = classify_NCLDV_bin.out.map{it[2]}.toList().map {["04_filter_NCLDV", "20NCVOG_weight.tsv" , it]}
+                .mix(detect_hallmark_genes_from_bin.out.table.map{it[1]}.toList().map {["05_validate_NCLDV/hallmark", "hallmark_gene.tsv", it]})
+                .mix(validate_ncldv_bin.out.table.map{it[1]}.toList().map {["05_validate_NCLDV", "NCLDV_validation.tsv", it]})
+                .mix(find_delineage_candidate.out.candidate.map{it[3]}.toList().map {["07_delineage_NCLDV/", "delineage_candidate.tsv", it]})
+                .mix(delineage_bin.out.table.toList().map {["07_delineage_NCLDV/delineage","delineage_summary.tsv", it]})
     
     summarize_table(
         table_ch
     )
+    /*09 finnish*/
 }
 
 process fastp {
-    publishDir "${params.out}/binning/fastp/fastq", pattern: '*.fastq.gz', mode: 'symlink'
-    publishDir "${params.out}/binning/fastp/html", pattern: '*.html', mode: 'symlink'
-    publishDir "${params.out}/binning/fastp/json", pattern: '*.json', mode: 'symlink'
+    publishDir "${params.out}/01_qc_reads/fastq", pattern: '*.fastq.gz', mode: 'symlink'
+    publishDir "${params.out}/01_qc_reads/html", pattern: '*.html', mode: 'symlink'
+    publishDir "${params.out}/01_qc_reads/json", pattern: '*.json', mode: 'symlink'
 
     input:
     tuple val(id), path("seq1.fastq.gz"), path("seq2.fastq.gz")
@@ -362,7 +365,7 @@ process fastp {
 rename contig header by run id
 */
 process megahit {
-    publishDir "${params.out}/binning/assembly", mode: 'symlink'
+    publishDir "${params.out}/02_assembly", mode: 'symlink'
 
     input:
     tuple val(id), path(forward), path(backward)
@@ -379,7 +382,7 @@ process megahit {
 }
 
 process coverm {
-    publishDir "${params.out}/binning/coverm", mode: 'symlink'
+    publishDir "${params.out}/03_binning/coverm", mode: 'symlink'
     input:
     tuple val(id), path(contig)
     path("seq1/*")
@@ -395,9 +398,9 @@ process coverm {
 }
 
 process metabat2 {
-    publishDir "${params.out}/binning/metabat2", pattern: "*_metabat2bin/*", mode: 'symlink'
-    publishDir "${params.out}/binning/metabat2", pattern: "*_metabat2sc/*", mode: 'symlink'
-    publishDir "${params.out}/binning/depth", pattern: "*.depth.txt", mode: 'symlink'
+    publishDir "${params.out}/03_binning/metabat2bin", pattern: "*_metabat2bin/*", mode: 'symlink'
+    publishDir "${params.out}/03_binning/metabat2sc", pattern: "*_metabat2sc/*", mode: 'symlink'
+    publishDir "${params.out}/03_binning/depth", pattern: "*.depth.txt", mode: 'symlink'
 
     input:
     tuple val(id), path(contig), path("bam/*")
@@ -420,7 +423,7 @@ process metabat2 {
 }
 
 process rename_bin {
-    publishDir "${params.out}/binning/bins/fasta", mode: 'symlink'
+    publishDir "${params.out}/03_binning/bin/fasta", mode: 'symlink'
 
     input:
     path(bin)
@@ -436,7 +439,7 @@ process rename_bin {
 }
 
 process prodigal {
-    publishDir "${params.out}/binning/bins/prodigal", mode: 'symlink'
+    publishDir "${params.out}/03_binning/bin/prodigal", mode: 'symlink'
 
     input:
     tuple val(id), path(bin)
@@ -451,7 +454,7 @@ process prodigal {
 }
 
 process hmmsearch_with_NCVOGs {
-    publishDir "${params.out}/detect_NCLDV/tblout", mode: 'symlink'
+    publishDir "${params.out}/04_filter_NCLDV/tblout", mode: 'symlink'
 
     input:
     tuple val(id), path(faa)
@@ -479,7 +482,7 @@ process classify_NCLDV_bin {
 }
 
 process viralrecall {
-    publishDir "${params.out}/validate_NCLDV/assessment/viralrecall", mode: 'symlink'
+    publishDir "${params.out}/05_validate_NCLDV/assessment/viralrecall", mode: 'symlink'
 
     input:
     tuple val(id), path(bin)
@@ -495,7 +498,7 @@ process viralrecall {
 }
 
 process virsorter2 {
-    publishDir "${params.out}/validate_NCLDV/assessment/virsorter2", mode: 'symlink'
+    publishDir "${params.out}/05_validate_NCLDV/assessment/virsorter2", mode: 'symlink'
 
     input:
     tuple val(id), path(bin)
@@ -511,7 +514,7 @@ process virsorter2 {
 }
 
 process CAT {
-    publishDir "${params.out}/validate_NCLDV/assessment/CAT", mode: 'symlink'
+    publishDir "${params.out}/05_validate_NCLDV/assessment/CAT", mode: 'symlink'
 
     input:
     tuple val(id), path(bin)
@@ -527,7 +530,7 @@ process CAT {
 }
 
 process hmmsearch_with_NCLDV_149_hmm {
-    publishDir "${params.out}/validate_NCLDV/assessment/NCLDV_149_hmm", mode: 'symlink'
+    publishDir "${params.out}/05_validate_NCLDV/assessment/NCLDV_149_hmm", mode: 'symlink'
 
     input:
     tuple val(id), path(faa)
@@ -542,7 +545,7 @@ process hmmsearch_with_NCLDV_149_hmm {
 }
 
 process summarize_assessment {
-    publishDir "${params.out}/validate_NCLDV/assessment/summary", mode: 'symlink'
+    publishDir "${params.out}/05_validate_NCLDV/summary", mode: 'symlink'
 
     input:
     tuple val(id), path(bin), path(viralrecall), path(virsorter2), path(CAT), path(tblout)
@@ -557,7 +560,7 @@ process summarize_assessment {
 }
 
 process hmmsearch_with_hallmark_genes {
-    publishDir "${params.out}/validate_NCLDV/hallmark/tblout", mode: 'symlink'
+    publishDir "${params.out}/05_validate_NCLDV/hallmark/tblout", mode: 'symlink'
 
     input:
     tuple val(id), path(faa)
@@ -599,7 +602,7 @@ process validate_ncldv_bin {
 }
 
 process remove_cellular_contig {
-    publishDir "${params.out}/decontaminate_NCLDV/bins", mode: 'symlink'
+    publishDir "${params.out}/06_decontaminate_NCLDV/bin", mode: 'symlink'
 
     input:
     tuple val(id), path(bin), path(summary)
@@ -641,20 +644,20 @@ process count_tetramer {
 }
 
 process delineage_bin {
-    publishDir "${params.out}/delineage_NCLDV/", pattern: "bins/*", mode: 'symlink'
-    publishDir "${params.out}/delineage_NCLDV/tree", pattern: "*.tree", mode: 'symlink'
+    publishDir "${params.out}/07_delineage_NCLDV/delineage", pattern: "bin/*", mode: 'symlink'
+    publishDir "${params.out}/07_delineage_NCLDV/delineage/tree", pattern: "*.tree", mode: 'symlink'
 
     input:
     tuple val(id), path(bin), path(depth), path(tetramer), path(hallmark_summary), path(assessment)
 
     output:
-    tuple path("bins/*"), path(depth), path(assessment),  emit:'bin'
+    tuple path("bin/*"), path(depth), path(assessment),  emit:'bin'
     path("${id}.tree"), emit:'tree'
     path("${id}.delineage_summary.tsv"), emit: 'table'
 
     script:
     """
-    mkdir -p bins
+    mkdir -p bin
     python ${baseDir}/bin/delineage.py -b ${id} \
                                        -f ${bin} \
                                        -t ${tetramer} \
@@ -662,7 +665,7 @@ process delineage_bin {
                                        -m ${hallmark_summary} \
                                        -n ${assessment} \
                                        -s ${params.hallmark_scgs} \
-                                       -o bins \
+                                       -o bin \
                                        -O ${id}.tree \
                                        -S ${id}.delineage_summary.tsv
     """
@@ -685,8 +688,8 @@ process postdelineage {
 }
 
 process second_decontamination {
-    publishDir "${params.out}/final_NCLDV_MAG", pattern: "*.fasta", mode: 'symlink'
-    publishDir "${params.out}/decontamination_NCLDV_2nd/summary", pattern: "*.tsv",  mode: 'symlink'
+    publishDir "${params.out}/09_final_NCLDV_MAG", pattern: "*.fasta", mode: 'symlink'
+    publishDir "${params.out}/08_decontamination_NCLDV_2nd/summary", pattern: "*.tsv",  mode: 'symlink'
 
     input:
     tuple val(id), path(bin), path(depth), path(tetramer), path(assessment_summary)
@@ -702,10 +705,10 @@ process second_decontamination {
 }
 
 process summarize_table {
-    publishDir "${params.out}/summary/", mode: 'symlink'
+    publishDir "${params.out}/${path}/", mode: 'symlink'
 
     input:
-    tuple val(file), path("table/*")
+    tuple val(path), val(file), path("table/*")
     
     output:
     path("${file}")
