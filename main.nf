@@ -383,6 +383,7 @@ process megahit {
 
 process coverm {
     publishDir "${params.out}/03_binning/coverm", mode: 'symlink'
+
     input:
     tuple val(id), path(contig)
     path("seq1/*")
