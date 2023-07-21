@@ -1,20 +1,16 @@
 import argparse
 import pandas as pd
-from sklearn.manifold import MDS
-from sklearn.metrics import pairwise_distances
+from sklearn.decomposition import PCA
 from sklearn.preprocessing import Normalizer
 from scipy.cluster.hierarchy import linkage, to_tree
 from Bio import SeqIO
 
 def clustering_contigs(coverage_df, tetra_df):
 
-    # Calculate the pairwise distance matrix
-    tetra_distances = pairwise_distances(tetra_df, metric="euclidean")
-
-    # Apply MDS and transform the data to 2D
-    mds = MDS(n_components=2, dissimilarity="precomputed", random_state=0)
-    tetra_2d = mds.fit_transform(tetra_distances)
-    tetra_2d_df = pd.DataFrame(tetra_2d, index=tetra_df.index, columns=["MDS1", "MDS2"])
+    # Apply PCA and transform the data to 2D
+    pca = PCA(n_components=2)
+    tetra_2d = pca.fit_transform(tetra_df)
+    tetra_2d_df = pd.DataFrame(tetra_2d, index=tetra_df.index, columns=["PC1", "PC2"])
 
     # Apply the normalizer to the coverage data
     normalizer = Normalizer(norm="l1")
@@ -123,7 +119,8 @@ def main():
     single_copy_genes = args.scgs.split(',')
 
     coverage_df = pd.read_csv(args.depth, sep="\t", header=0)
-    coverage_df = coverage_df.iloc[:, [0] + list(range(3, len(coverage_df.columns), 2))]
+    # Use both depth and variance
+    coverage_df = coverage_df.iloc[:, [0] + list(range(3, len(coverage_df.columns)))]
     coverage_df.set_index("contigName", inplace=True)
     # Identify all-zero columns and drop all-zero columns from the DataFrame
     coverage_df = coverage_df.loc[:, ~(coverage_df == 0).all()]
