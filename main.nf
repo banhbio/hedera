@@ -691,7 +691,7 @@ process postdelineage {
 
 process second_decontamination {
     publishDir "${params.out}/09_final_NCLDV_MAG", pattern: "*.fasta", mode: 'symlink'
-    publishDir "${params.out}/08_decontamination_NCLDV_2nd/summary", pattern: "*.tsv",  mode: 'symlink'
+    publishDir "${params.out}/08_decontaminate_NCLDV_2nd/summary", pattern: "*.tsv",  mode: 'symlink'
 
     input:
     tuple val(id), path(bin), path(depth), path(tetramer), path(assessment_summary)

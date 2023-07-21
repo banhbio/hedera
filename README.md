@@ -39,15 +39,16 @@ This pipeline is to recover NCLDV MAGs from metagenomes. It primarily consists o
 ## Output
 
 - `01_qc_reads`: The results of the quality control checks for the reads. (no output, if the `--after_qc` option is included)
-    - `fastq`: FastQ files
-    - `html`: HTML report files
-    - `json`: JSON summary files
+    - `fastq`: FastQ files.
+    - `html`: HTML report files.
+    - `json`: JSON summary files.
 - `02_assembly`: The results of the assembly. (no output, if the `--from_contig` option is included)
-- `03_binning`: The results and intermediate files from the binning process
-    - `metabat2bin`: The bins obtained from metabat2
-    - `metabat2sc`: The single contigs rescued from the leftovers of metabat2
-    - `depth`: The depth files used as input for metabat2
-    - `bin`: The final collection of bins obtained from the binning process
+- `03_binning`: The results and intermediate files from the binning process.
+    - `metabat2bin`: The bins obtained from metabat2.
+    - `metabat2sc`: The single contigs rescued from the leftovers of metabat2.
+    - `coverm`: The intermediate .bam files produced by coverM.
+    - `depth`: The depth files used as input for metabat2.
+    - `bin`: The final collection of bins obtained from the binning process.
         - `fasta`: The bin fasta.
         - `prodigal`: The protein sequences predicted from the fasta sequences.
 - `04_filter_NCLDV`: The results of the NCLDV bin filtering process.
@@ -73,7 +74,7 @@ This pipeline is to recover NCLDV MAGs from metagenomes. It primarily consists o
     - `bin`: The bin fasta after the delineage process.
     - `tree`: The hierarchical clusterig results for contigs of each candidate bin.
   - `delineage_summary.tsv`: The tsv file, compling the results of the delineation for each candidate bin.
-- `08_decontamination_NCLDV_2nd`: The result of the second decontamination process.
+- `08_decontaminate_NCLDV_2nd`: The result of the second decontamination process.
   - `summary`: The results against the decontamination criteria for each bin.
 - `09_final_NCLDV_MAG`: The finaly harvested NCLDV MAGs.
 
@@ -81,10 +82,6 @@ This pipeline is to recover NCLDV MAGs from metagenomes. It primarily consists o
 
 ## Concern
 I donot care any licences yet (hmms and modefied viralrecall scripts etc.).
-~~At least, hmm file should be replaced by us.~~
-The original sources of the hmm files were confirmed.
-
-Please make sure before this page become public.
 
 This pipeline makes a lot of intermediate files.
 CAT is so slow.
