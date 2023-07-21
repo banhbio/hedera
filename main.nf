@@ -407,7 +407,7 @@ process metabat2 {
 
     output:
     path("${id}_metabat2bin/*"), emit: 'bins'
-    path("${id}_metabat2sc/*"), emit: 'single_contig'
+    path("${id}_metabat2sc/*"), emit: 'single_contig', optional: true
     tuple val(id), path("${id}.depth.txt"), emit: 'depth'
 
     script:
@@ -416,6 +416,7 @@ process metabat2 {
     metabat2 -i ${contig} -a ${id}.depth.txt -t ${task.cpus} -v -o ${id}_metabat2bin/${id}_metabat2bin
     cat ${id}_metabat2bin/* | seqkit seq -ni | seqkit grep -v -f - ${contig} | seqkit replace -p "\s.+" | seqkit seq -m ${params.leftover_length} > ${id}_metabat2sc.fasta
     mkdir ${id}_metabat2sc
+    [ -s "${id}_metabat2sc.fasta" ] || exit 0
     seqkit split -s 1 -O tmp ${id}_metabat2sc.fasta
     for old in tmp/*; do base=\$(basename \$old); suffix=\${base#*.}; number_fasta=\$(echo \$suffix | cut -d'_' -f 2 | sed 's/^0*//'); mv "\$old" ${id}_metabat2sc/${id}_metabat2sc."\${number_fasta}"; done
     rm -rf tmp
