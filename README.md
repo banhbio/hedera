@@ -9,22 +9,9 @@ Original source code was provided by Ivy (Yue Fang).
 2. prepare CAT database in data/CAT.
 3. modify virarecall script to run everywhere.
 
-## progress
-
-1. [x] reads quality filter
-2. [x] de novo assembly (contigs)
-3. [x] mapping
-4. [x] binning
-5. [x] detect putative NCLDV bins
-6. [x] assessment of GV characteristics of the contigs
-7. [x] discard nonNCLDV bins
-8. [x] remove cellular contigs
-9. [x] delineage NCLDV bins (except CAT)
-10. [x] further decontaminate NCLDV bins
-
 ## Pipeline Description
 
-This pipeline is divided into several processes, recovering NCLDV MAGs from metagenomes. It primarily consists of two stages: first, the assembly and NCLDV bin screening stage, and second, the bin quality control stage.
+This pipeline is to recover NCLDV MAGs from metagenomes. It primarily consists of two stages: first, the assembly and NCLDV bin screening stage, and second, the bin quality control stage.
 
 ### Stage One: Assembly and Screening
 
@@ -40,7 +27,7 @@ This pipeline is divided into several processes, recovering NCLDV MAGs from meta
 - **Removal of Non-NCLDV Contigs (Decontamination) :** Contigs within bins that have an NCLDV score of 0 are removed.
 - **Splitting of Chimeric Bins:** Bins that have become chimeras of multiple NCLDVs are separated. The process for this is as follows:
    1. **Searching Candidates:** Bins with heterogeneous depth (coefficient of variation: (standard deviation / mean) of "total average depth" > 0.01) and multiple single-copy NCLDV core genes (TFIIS, VLTF3, pATPase_all, DNApolB) are considered as candidates.
-   2. **Contig Clustering:** Contigs from candidate bins are clustered based on coverage and Tetranucleotide Frequency (TF).
+   2. **Contig Clustering:** Contigs from candidate bins are clustered based on coverage and tetranucleotide frequency (TF).
    3. **Decision to Split:** The decision to split or not is made based on each cluster's size (40Kb), the presence or absence of single-copy NCLDV core genes, and the NCLDV score. Bins that are not divided are marked as mscg (multiple single copy genes).
 - **Removal of Outlier Contig (2nd Decontamination):** Contigs that are outlier based on coverage, TF, and NCLDV score are excluded from the bin. Contigs that satisfy the following three conditions are removed from the bin:
    1. **Average Depth Outlier:** "total average depth" < Q1-1.5 \* IQR or "total average depth" > Q3+1.5 \* IQR
@@ -51,7 +38,7 @@ This pipeline is divided into several processes, recovering NCLDV MAGs from meta
 
 ## Output
 
-- `01_qc_areads`: The results of the quality control checks for the reads. (no output, if the `--after_qc` option is included)
+- `01_qc_reads`: The results of the quality control checks for the reads. (no output, if the `--after_qc` option is included)
     - `fastq`: FastQ files
     - `html`: HTML report files
     - `json`: JSON summary files
