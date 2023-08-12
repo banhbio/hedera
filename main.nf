@@ -53,48 +53,60 @@ hallmark_gene_table = createTable(params.hallmark_genes, params.hallmark_hmm_sco
 log.info"""
 General parameters in this run:
 """
-
-if(params.after_qc){
-    log.info"""
-        --after_qc : true
-            Input reads are treated as quality-checked (e.g., with fastp, trimmomatic, etc.).
-    """
-}
-
-if(params.from_contig){
-    log.info"""
-        --from_contig : true
-            The assembly step will skipped. Please ensure --input_contigs is not left empty.
-    """
-    if(params.input_contigs.isEmpty()){
-            log.info""
-            exit 1, "Oops! --input_contigs is empty."
+if(!params.from_bins){
+    if(params.after_qc){
+        log.info"""
+            --after_qc : true
+                Input reads are treated as quality-checked (e.g., with fastp, trimmomatic, etc.).
+        """
     }
-}
 
-log.info"""
-    Input reads  : ${params.input_reads}
-"""
+    if(params.from_contig){
+        log.info"""
+            --from_contig : true
+                The assembly step will skipped. Please ensure --input_contigs is not left empty.
+        """
+        if(params.input_contigs.isEmpty()){
+                log.info""
+                exit 1, "Oops! --input_contigs is empty."
+        }
+    }
 
-if(!params.after_qc){
     log.info"""
-    Quality check settings:
-        fastp parameter : ${params.fastp_parameter} 
+        Input reads  : ${params.input_reads}
     """
-}
 
-if(params.from_contig){
+    if(!params.after_qc){
+        log.info"""
+            Quality check settings:
+                fastp parameter : ${params.fastp_parameter} 
+        """
+    }
+
+    if(params.from_contig){
+        log.info"""
+            Input contigs: ${params.input_contigs}
+        """
+    }else{
+        log.info"""
+            Assembly settings:
+                Assembly name             : ${params.assembly_name}
+                Memory per machine' total : ${params.assembly_memory_per_machine}
+                Kmer parameter            : ${params.assembly_kmer}
+                Minimun contig length     : ${params.assembly_min_contig_len}
+        """
+    }
     log.info"""
-    Input contigs: ${params.input_contigs}
+        Binnig settings:
+            Minimum contig length resucued from binning leftovers: ${params.leftover_length}
     """
 }else{
     log.info"""
-    Assembly settings:
-        Memory per machine' total : ${params.assembly_memory_per_machine}
-        Kmer parameter    : ${params.assembly_kmer}
-        Minimun contig length     : ${params.assembly_min_contig_len}
+        --from_bins : true
+            Start the pipleline from bins. Please ensure --input_bins and --input_depth are not left empty.
     """
 }
+    
 
 log.info"""
     Binnig settings:
@@ -130,54 +142,67 @@ workflow {
     /*01 quality control of reads*/
     read_ch = Channel.fromFilePairs(params.input_reads, flat:true)
 
-    if(!params.after_qc){
-        fastp(
-            read_ch
-        )
-        qc_read_ch = fastp.out.read
-    }else{
-        qc_read_ch = read_ch
-    }
+    if(!params.from_bins) {
+        if(!params.after_qc){
+            fastp(
+                read_ch
+            )
+            qc_read_ch = fastp.out.read
+        }else{
+            qc_read_ch = read_ch
+        }
     /*01 finnish*/
 
     /*02 assembly*/
-    if(!params.from_contig){
-        megahit(
-            qc_read_ch
-        )
-        contig_ch = megahit.out.contig
-    }else{
-        contig_ch = Channel.fromPath(params.input_contigs)
-                           .map{[it.getSimpleName(), it]}
-    }
+        forward_reads_list = qc_read_ch.map{it[1]}.toList()
+        backward_reads_list = qc_read_ch.map{it[2]}.toList()
+
+        if(!params.from_contig){
+            megahit(
+                forward_reads_list,
+                backward_reads_list
+            )
+
+            contig_ch = megahit.out.contig
+        }else{
+            contig_ch = Channel.fromPath(params.input_contigs)
+                            .map{[it.getSimpleName(), it]}
+        }
     /*02 finnish*/
 
     /*03 binnning*/
-    forward_reads_list = qc_read_ch.map{it[1]}.toList()
-    backward_reads_list = qc_read_ch.map{it[2]}.toList()
+        coverm(
+            contig_ch,
+            forward_reads_list,
+            backward_reads_list
+        )
 
-    coverm(
-        contig_ch,
-        forward_reads_list,
-        backward_reads_list
-    )
+        summarize_depth(
+            coverm.out.bam
+        )
 
-    metabat2_input_ch =  contig_ch.combine(coverm.out.bam, by: 0)
+        depth_ch = summarize_depth.out.tsv
+        
+        metabat2_input_ch = contig_ch.combine(depth_ch)
 
-    metabat2(
-        metabat2_input_ch
+        metabat2(
+            metabat2_input_ch
+        )
+        
+        bin_ch = metabat2.out.bins.flatten().mix(metabat2.out.single_contig.flatten())
+    }else{
+        bin_ch = Channel.fromPath(params.input_bins)
+        depth_ch = Channel.fromPath(params.input_depth)
+    }
+
+    rename_bin(
+        bin_ch
     )
     /*03 finnish*/
 
     /*04 filter putative NCLDV bins*/
 
     /* collect all bins */
-    bin_ch = metabat2.out.bins.flatten().mix(metabat2.out.single_contig.flatten())
-
-    rename_bin(
-        bin_ch
-    )
-
     prodigal(
         rename_bin.out.bin
     )
@@ -264,10 +289,7 @@ workflow {
 
     delineage_candidate_input_ch = remove_cellular_contig.out.bin
                                                         .combine(detect_hallmark_genes_from_bin.out.table_per_contig, by: 0)
-                                                        .map{[it[0].split("_").init().init().join("_"),
-                                                              it[0], it[1], it[2]]}
-                                                        .combine(metabat2.out.depth, by:0)
-                                                        .map{[it[1], it[2], it[3], it[4]]}
+                                                        .combine(depth_ch)
 
     find_delineage_candidate(
         delineage_candidate_input_ch,
@@ -368,15 +390,19 @@ process megahit {
     publishDir "${params.out}/02_assembly", mode: 'symlink'
 
     input:
-    tuple val(id), path(forward), path(backward)
+    path("seq*_1.fastq.gz")    
+    path("seq*_2.fastq.gz")    
 
     output:
-    tuple val(id), path("${id}.megahit.rename.contigs.fa"), emit: 'contig'
+    path("${id}.megahit.rename.contigs.fa"), emit: 'contig'
 
     script:
+    id = params.assembly_name
     mem = (task.memory =~ /(\d+).GB/)[0][1] 
     """
-    megahit -1 ${forward} -2 ${backward} -m ${params.assembly_memory_per_machine}  -t ${task.cpus} -o megahit --out-prefix ${id}.megahit ${params.assembly_kmer} --min-contig-len ${params.assembly_min_contig_len}
+    forward=\$(ls seq*_1.fastq.gz | tr '\n' ',' | sed 's/,\$//')
+    backward=\$(ls seq*_2.fastq.gz | tr '\n' ',' | sed 's/,\$//')
+    megahit -1 \$forward -2 \$backward -m ${params.assembly_memory_per_machine}  -t ${task.cpus} -o megahit --out-prefix ${id}.megahit ${params.assembly_kmer} --min-contig-len ${params.assembly_min_contig_len}
     seqkit replace -p '^' -r '${id}_' megahit/${id}.megahit.contigs.fa > ${id}.megahit.rename.contigs.fa
     """
 }
@@ -385,41 +411,52 @@ process coverm {
     publishDir "${params.out}/03_binning/coverm", mode: 'symlink'
 
     input:
-    tuple val(id), path(contig)
+    path(contig)
     path("seq1/*")
     path("seq2/*")
 
     output:
-    tuple val(id), path("${id}/*"), emit: 'bam'
+    path("bam/*"), emit: 'bam'
 
     script:
     """
-    coverm make -r ${contig} -1 seq1/* -2 seq2/* -o ${id} -t ${task.cpus}
+    coverm make -r ${contig} -1 seq1/* -2 seq2/* -o bam -t ${task.cpus}
+    """
+}
+
+process summarize_depth {
+    publishDir "${params.out}/03_binning/depth", mode: 'symlink'
+
+    input:
+    path("bam/*")
+
+    output:
+    path("depth.txt"), emit: 'tsv'
+
+    script:
+    """
+    jgi_summarize_bam_contig_depths --outputDepth depth.txt bam/*.bam
     """
 }
 
 process metabat2 {
-    publishDir "${params.out}/03_binning/metabat2bin", pattern: "*_metabat2bin/*", mode: 'symlink'
-    publishDir "${params.out}/03_binning/metabat2sc", pattern: "*_metabat2sc/*", mode: 'symlink'
-    publishDir "${params.out}/03_binning/depth", pattern: "*.depth.txt", mode: 'symlink'
+    publishDir "${params.out}/03_binning/", mode: 'symlink'
 
     input:
-    tuple val(id), path(contig), path("bam/*")
+    tuple path(contig), path("depth")
 
     output:
-    path("${id}_metabat2bin/*"), emit: 'bins'
-    path("${id}_metabat2sc/*"), emit: 'single_contig', optional: true
-    tuple val(id), path("${id}.depth.txt"), emit: 'depth'
+    path("metabat2bin/*"), emit: 'bins'
+    path("metabat2sc/*"), emit: 'single_contig', optional: true
 
     script:
     """
-    jgi_summarize_bam_contig_depths --outputDepth ${id}.depth.txt bam/*.bam
-    metabat2 -i ${contig} -a ${id}.depth.txt -t ${task.cpus} -v -o ${id}_metabat2bin/${id}_metabat2bin
-    cat ${id}_metabat2bin/* | seqkit seq -ni | seqkit grep -v -f - ${contig} | seqkit replace -p "\s.+" | seqkit seq -m ${params.leftover_length} > ${id}_metabat2sc.fasta
-    mkdir ${id}_metabat2sc
-    [ -s "${id}_metabat2sc.fasta" ] || exit 0
-    seqkit split -s 1 -O tmp ${id}_metabat2sc.fasta
-    for old in tmp/*; do base=\$(basename \$old); suffix=\${base#*.}; number_fasta=\$(echo \$suffix | cut -d'_' -f 2 | sed 's/^0*//'); mv "\$old" ${id}_metabat2sc/${id}_metabat2sc."\${number_fasta}"; done
+    metabat2 -i ${contig} -a ${depth} -t ${task.cpus} -v -o metabat2bin/metabat2bin
+    cat metabat2bin/* | seqkit seq -ni | seqkit grep -v -f - ${contig} | seqkit replace -p "\s.+" | seqkit seq -m ${params.leftover_length} > metabat2sc.fasta
+    mkdir metabat2sc
+    [ -s "metabat2sc.fasta" ] || exit 0
+    seqkit split -s 1 -O tmp metabat2sc.fasta
+    for old in tmp/*; do base=\$(basename \$old); suffix=\${base#*.}; number_fasta=\$(echo \$suffix | cut -d'_' -f 2 | sed 's/^0*//'); mv "\$old" metabat2sc/metabat2sc."\${number_fasta}"; done
     rm -rf tmp
     """
 }
