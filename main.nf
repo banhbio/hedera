@@ -104,14 +104,14 @@ if(!params.from_bins){
     log.info"""
         --from_bins : true
             Start the pipleline from bins. Please ensure --input_bins and --input_depth are not left empty.
-    """
+        
+        Input bins  : ${params.input_bins}
+        Input depth : ${params.input_depth}
+   """
 }
     
 
 log.info"""
-    Binnig settings:
-        Minimum contig length resucued from binning leftovers: ${params.leftover_length}
-    
     Detect NCLDV bin settings:
         Core gene (20 NCVOG) hmms : ${params.conserved_20_NCVOG_hmm}
         Core gene index           : ${params.core_gene_index}
@@ -140,9 +140,9 @@ ${hallmark_gene_table.split('\n').collect { '       ' + it }.join('\n')}
 
 workflow {
     /*01 quality control of reads*/
-    read_ch = Channel.fromFilePairs(params.input_reads, flat:true)
 
     if(!params.from_bins) {
+        read_ch = Channel.fromFilePairs(params.input_reads, flat:true)
         if(!params.after_qc){
             fastp(
                 read_ch
@@ -461,6 +461,8 @@ process metabat2 {
     """
 }
 
+
+/* This is to avoid viralrecall error*/
 process rename_bin {
     publishDir "${params.out}/03_binning/bin/fasta", mode: 'symlink'
 
@@ -473,7 +475,7 @@ process rename_bin {
     script:
     id = bin.getBaseName().replace(".", "_")
     """
-    cp ${bin} ${id}.fasta
+    cp ${bin} ${id}.fasta || exit 0
     """
 }
 
