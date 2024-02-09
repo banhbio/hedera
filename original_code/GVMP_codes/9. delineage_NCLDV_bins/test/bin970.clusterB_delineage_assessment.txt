@@ -1,5 +1,0 @@
-clusterB length > 40k: False
-SCG present? True
-Are over 50% of the contigs with GV score > 2? True
-NCLDV taxonomy annotated by CAT ):|1.00|unclassified|Marseilleviridae|(no|rank):|1.00|Marseillevirus|LCMAC101|(species):|1.00
-NCLDV taxonomy annotated by CAT ):|1.00|unclassified|Marseilleviridae|(no|rank):|1.00|Marseillevirus|LCMAC101|(species):|1.00
