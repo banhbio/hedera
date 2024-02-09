@@ -166,7 +166,6 @@ workflow {
             contig_ch = megahit.out.contig
         }else{
             contig_ch = Channel.fromPath(params.input_contigs)
-                            .map{[it.getSimpleName(), it]}
         }
     /*02 finnish*/
 
@@ -181,14 +180,13 @@ workflow {
             coverm.out.bam
         )
 
-        depth_ch = summarize_depth.out.tsv
-        
-        metabat2_input_ch = contig_ch.combine(depth_ch)
+        depth_ch = summarize_depth.out.depth
 
         metabat2(
-            metabat2_input_ch
+            contig_ch,
+            depth_ch
         )
-        
+
         bin_ch = metabat2.out.bins.flatten().mix(metabat2.out.single_contig.flatten())
     }else{
         bin_ch = Channel.fromPath(params.input_bins)
@@ -431,7 +429,7 @@ process summarize_depth {
     path("bam/*")
 
     output:
-    path("depth.txt"), emit: 'tsv'
+    path("depth.txt"), emit: 'depth'
 
     script:
     """
@@ -443,7 +441,8 @@ process metabat2 {
     publishDir "${params.out}/03_binning/", mode: 'symlink'
 
     input:
-    tuple path(contig), path("depth")
+    path(contig)
+    path(depth)
 
     output:
     path("metabat2bin/*"), emit: 'bins'
