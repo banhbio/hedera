@@ -19,7 +19,7 @@ vi your_config.config
 
 3. Run hedera
 ```
-nextflow run /path_to_hedera/main.nf your_config.config
+nextflow run /path_to_hedera/main.nf -c your_config.config
 ```
 
 ## Pipeline Description
