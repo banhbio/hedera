@@ -1,13 +1,26 @@
 # hedera
-Author: Hiroki Ban (ban@kuicr.kyoto-u.ac.jp)
-
-This is a WIP pipeline for binning NCLDV MAGs.
-Original source code was provided by Ivy (Yue Fang).
+This is a pipeline for binning NCLDV MAGs.
 
 ## Installation
 1. Install Nextflow (https://www.nextflow.io/) in your PATH.
 2. prepare CAT database in data/CAT.
-3. modify virarecall script to run everywhere.
+3. modify virarecall script to run everywhere. 
+
+## Run
+1. Copy config file.
+```
+cp /path_to_hedera/main.config your_config.config
+```
+
+2. edit config for your run.
+```
+vi your_config.config
+```
+
+3. Run hedera
+```
+nextflow run /path_to_hedera/main.nf your_config.config
+```
 
 ## Pipeline Description
 
@@ -83,6 +96,6 @@ This pipeline is to recover NCLDV MAGs from metagenomes. It primarily consists o
 ## Concern
 I donot care any licences yet (hmms and modefied viralrecall scripts etc.).
 
-This pipeline makes a lot of intermediate files.
-CAT is so slow.
-In CAT, pithovirus is not included in Nucleocytoviricota.
+## Author
+Hiroki Ban
+Yue Fang
