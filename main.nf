@@ -5,7 +5,7 @@
  */
 nextflow.enable.dsl=2
 
-version = '0.0.4'
+version = '0.0.5'
 
 log.info """
 hedera: This is a pipleline to assemble and binning NCLDV MAGs from metagenomic data.
