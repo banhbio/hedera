@@ -755,6 +755,7 @@ process summarize_table {
 
     script:
     """
-    csvtk concat -t table/* > ${file}
+    touch ${file}
+    csvtk concat -t table/* > ${file} || exit 0
     """
 }
