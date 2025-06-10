@@ -91,11 +91,6 @@ This pipeline is to recover NCLDV MAGs from metagenomes. It primarily consists o
   - `summary`: The results against the decontamination criteria for each bin.
 - `09_final_NCLDV_MAG`: The finaly harvested NCLDV MAGs.
 
-
-
-## Concern
-I donot care any licences yet (hmms and modefied viralrecall scripts etc.).
-
 ## Author
-Hiroki Ban
+Hiroki Ban,
 Yue Fang
