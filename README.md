@@ -1,10 +1,13 @@
 # hedera
 This is a pipeline for binning NCLDV MAGs.
 
+The tools include:
+Python3, fastp, MEGAHIT, CoverM, MetaBAT2, Prodigal, HMMER, ViralRecall, VirSorter2, CAT, SeqKit, CGAT, csvtk.
+
 ## Installation
 1. Install Nextflow (https://www.nextflow.io/) in your PATH.
 2. prepare CAT database in data/CAT.
-3. modify virarecall script to run everywhere. 
+3. modify a ViralRecall script to run everywhere. 
 
 ## Run
 1. Copy config file.
@@ -35,7 +38,7 @@ This pipeline is to recover NCLDV MAGs from metagenomes. It primarily consists o
 
 ### Stage Two: Quality Control of NCLDV Bins[^1]
 
-- **Evaluation of NCLDV Features:** The obtained bins are evaluated for their likelihood of being an NCLDV bin. Each contig in the bin is scored (NCLDV score: 0-4) based on Viralrecall, VirSorter2, Contig Annotation Tool (CAT), and hmmsearch of 149 NCLDV-characteristic gene hmm.
+- **Evaluation of NCLDV Features:** The obtained bins are evaluated for their likelihood of being an NCLDV bin. Each contig in the bin is scored (NCLDV score: 0-4) based on ViralRecall, VirSorter2, Contig Annotation Tool (CAT), and hmmsearch of 149 NCLDV-characteristic gene hmm.
 - **Removal of Non-NCLDV Bins:** Bins lacking five NCLDV hallmark genes (MCP_NCLDVs, DNApolB, TFIIS, VLTF3, pATPase_all) and where over 90% of the contigs have an NCLDV score of 0 are removed from the dataset.
 - **Removal of Non-NCLDV Contigs (Decontamination) :** Contigs within bins that have an NCLDV score of 0 are removed.
 - **Splitting of Chimeric Bins:** Bins that have become chimeras of multiple NCLDVs are separated. The process for this is as follows:
